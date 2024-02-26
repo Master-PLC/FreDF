@@ -1,5 +1,4 @@
-export CUDA_VISIBLE_DEVICES=$4
-
+export CUDA_VISIBLE_DEVICES=0
 
 set -e
 
@@ -12,28 +11,30 @@ for process_num in $(seq ${PROC_NUM}); do
 done
 
 DATA_ROOT=./dataset
-AMLT_OUTPUT_DIR=$3
-
-CHECKPOINTS=$AMLT_OUTPUT_DIR/checkpoints/
-RESULTS=$AMLT_OUTPUT_DIR/results/
-TEST_RESULTS=$AMLT_OUTPUT_DIR/test_results/
-LOG_PATH=$AMLT_OUTPUT_DIR/result_imputation.txt
+OUTPUT_DIR=./exp_results/imp_autoencoder
 
 model_name=TiDE
 seed=2023
-des='Srh-lambda-lr'
+des='ImpAE'
+
 auxi_loss="MAE"
 module_first=1
-
-lambda=$1
+lambda=1.0
 rl=$lambda
 ax=$(echo "1 - $lambda" | bc)
-lr=$2
+lr=0.001
 auxi_mode='rfft-fill'
 reconstruction_type='autoencoder'
 
-mask_rate_list=("${@:5}")
-echo "mask_rate_list: ${mask_rate_list[@]}"
+JOB_DIR=$OUTPUT_DIR/${model_name}_ETTh1_${lambda}
+mkdir -p $JOB_DIR
+
+CHECKPOINTS=$JOB_DIR/checkpoints/
+RESULTS=$JOB_DIR/results/
+TEST_RESULTS=$JOB_DIR/test_results/
+LOG_PATH=$JOB_DIR/result_imputation.txt
+
+mask_rate_list=(0.125 0.25 0.375 0.5)
 
 for mask_rate in ${mask_rate_list[@]}; do
     read -u 9
