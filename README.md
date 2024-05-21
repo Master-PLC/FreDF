@@ -62,27 +62,6 @@ bash ./scripts/ICML2024/imp_autoencoder/ETTh1_script/iTransformer.sh
 - Include the newly added model in the `Exp_Basic.model_dict` of  `./exp/exp_basic.py`.
 - Create the corresponding scripts under the folder `./scripts`.
 
-## Citation
-
-If you find this repo useful, please cite our paper.
-
-```
-@article{wang2024fredf,
-  title={FreDF: Learning to Forecast in Frequency Domain},
-  author={Wang, Hao and Pan, Licheng and Chen, Zhichao and Yang, Degui and Zhang, Sen and Yang, Yifei and Liu, Xinggao and Li, Haoxuan and Tao, Dacheng},
-  journal={arXiv preprint arXiv:2402.02399},
-  year={2024}
-}
-```
-
-## Contact
-
-If you have any questions or suggestions, feel free to contact:
-
-- Hao Wang (haohaow@zju.edu.cn)
-- Licheng Pan (22132045@zju.edu.cn)
-
-Or describe it in Issues.
 
 ## Acknowledgement
 
