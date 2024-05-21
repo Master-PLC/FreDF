@@ -49,11 +49,11 @@ pip install -r requirements.txt
 
 ```
 # long-term forecast
-bash ./scripts/ICML2024/ltf_overall/ETTh1_script/iTransformer.sh
+bash ./scripts/fredf_exp/ltf_overall/ETTh1_script/iTransformer.sh
 # short-term forecast
-bash ./scripts/ICML2024/stf_overall/FreTS_M4.sh
+bash ./scripts/fredf_exp/stf_overall/FreTS_M4.sh
 # imputation
-bash ./scripts/ICML2024/imp_autoencoder/ETTh1_script/iTransformer.sh
+bash ./scripts/fredf_exp/imp_autoencoder/ETTh1_script/iTransformer.sh
 ```
 
 4. Develop your own model.
