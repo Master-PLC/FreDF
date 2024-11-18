@@ -22,3 +22,11 @@ tensorboard==2.12.0
 torchmetrics
 tqdm
 xlrd
+statsmodels
+huggingface_hub
+multiprocess
+transformers
+datasets
+linear-attention-transformer
+pydantic
+docstring-parser
