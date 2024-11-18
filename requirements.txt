@@ -30,3 +30,4 @@ datasets
 linear-attention-transformer
 pydantic
 docstring-parser
+local-attention
