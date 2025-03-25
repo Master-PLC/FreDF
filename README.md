@@ -16,10 +16,10 @@
         <img alt="MIT license" src="https://img.shields.io/badge/License-MIT-E9BB41?logo=opensourceinitiative&logoColor=white">
     </a>
     <a href="https://star-history.com/#Master-PLC/PyITS">
-        <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Master-PLC/PyITS?logo=None&color=6BB392&label=%E2%98%85%20Stars">
+        <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/Master-PLC/fredf">
     </a>
     <a href="https://github.com/Master-PLC/PyITS/network/members">
-        <img alt="GitHub Repo forks" src="https://img.shields.io/github/forks/Master-PLC/PyITS?logo=forgejo&logoColor=black&label=Forks">
+        <img alt="GitHub Repo forks" src="https://img.shields.io/github/forks/Master-PLC/fredf">
     </a>
    <a href="https://github.com/Master-PLC/PyITS/blob/main/README.md">
         <img alt="README in English" src="https://pypots.com/figs/pypots_logos/readme/US.svg">
@@ -27,9 +27,8 @@
 </p>
 
 
-The repo is the official implementation for the paper: [FreDF: Learning to Forecast in the Frequency Domain](https://openreview.net/forum?id=4A9IdSa1ul).
- [[Slides]](https://cloud.tsinghua.edu.cn/f/175ff98f7e2d44fbbe8e/)
-
+The repo is the official implementation for the paper: [FreDF: Learning to Forecast in the Frequency Domain](https://openreview.net/forum?id=4A9IdSa1ul)
+ [[Slides]](https://docs.google.com/presentation/d/19JU99nGb2bdb9WGVxKCHFYPilJeO30kD/edit?usp=share_link&ouid=100361958470820548208&rtpof=true&sd=true).
 
 We provide the running scripts to reproduce experiments in `/scripts`, which covers three mainstream tasks: **long-term forecasting, short-term forecasting, and imputation.** We also provide the scripts to reproduce the baselines, which mostly inherit from the  [comprehensive benchmark](https://github.com/thuml/iTransformer/blob/main/README.md?plain=1).
 
