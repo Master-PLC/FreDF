@@ -33,9 +33,11 @@ The repo is the official implementation for the paper: [FreDF: Learning to Forec
 We provide the running scripts to reproduce experiments in `/scripts`, which covers three mainstream tasks: **long-term forecasting, short-term forecasting, and imputation.** We also provide the scripts to reproduce the baselines, which mostly inherit from the  [comprehensive benchmark](https://github.com/thuml/iTransformer/blob/main/README.md?plain=1).
 
 
-🤗 Please star this repo to help others notice FreDF if you think it is a useful toolkit. Please kindly [cite FreDF](https://github.com/Master-PLC/FreDF#-citing-fredf) in your publications if it helps with your research. This really means a lot to our open-source research. Thank you!
+🤗 Please star this repo to help others notice FreDF if you think it is a useful toolkit. Please kindly [cite FreDF](#citing-fredf) in your publications if it helps with your research. This really means a lot to our open-source research. Thank you!
 
-🚩**News** (2024.12) FreDF has been accepted as a poster in [ICLR-25](https://openreview.net/forum?id=4A9IdSa1ul).
+🚩**News** (2024.12) FreDF has been accepted as a poster in [ICLR-25](https://openreview.net/forum?id=4A9IdSa1ul). The associated [slide in Chinese](https://docs.google.com/presentation/d/19JU99nGb2bdb9WGVxKCHFYPilJeO30kD/edit?usp=share_link&ouid=100361958470820548208&rtpof=true&sd=true) is available.
+
+🚩**News** (2024.2) Introduction of this work [in Chinese](https://zhuanlan.zhihu.com/p/701597219) is available.
 
 🚩**News** (2023.12) We add implementations to train and evaluate deep learning models within transformed domain (Frequency Domain) on three main tasks.
 
