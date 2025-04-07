@@ -27,20 +27,18 @@
 </p>
 
 
-The repo is the official implementation for the paper: [FreDF: Learning to Forecast in the Frequency Domain](https://openreview.net/forum?id=4A9IdSa1ul)
- [[Slides]](https://docs.google.com/presentation/d/19JU99nGb2bdb9WGVxKCHFYPilJeO30kD/edit?usp=share_link&ouid=100361958470820548208&rtpof=true&sd=true).
+The repo is the official implementation for the paper: [FreDF: Learning to Forecast in the Frequency Domain](https://openreview.net/forum?id=4A9IdSa1ul).
 
 We provide the running scripts to reproduce experiments in `/scripts`, which covers three mainstream tasks: **long-term forecasting, short-term forecasting, and imputation.** We also provide the scripts to reproduce the baselines, which mostly inherit from the  [comprehensive benchmark](https://github.com/thuml/iTransformer/blob/main/README.md?plain=1).
 
 
 🤗 Please star this repo to help others notice FreDF if you think it is a useful toolkit. Please kindly [cite FreDF](#citing-fredf) in your publications if it helps with your research. This really means a lot to our open-source research. Thank you!
 
-🚩**News** (2024.12) FreDF has been accepted as a poster in [ICLR-25](https://openreview.net/forum?id=4A9IdSa1ul). The associated [slide in Chinese](https://docs.google.com/presentation/d/19JU99nGb2bdb9WGVxKCHFYPilJeO30kD/edit?usp=share_link&ouid=100361958470820548208&rtpof=true&sd=true) is available.
+🚩**News** (2024.12) FreDF has been accepted as a poster in ICLR-25: [[paper]](https://openreview.net/forum?id=4A9IdSa1ul) [[slide]](https://docs.google.com/presentation/d/19JU99nGb2bdb9WGVxKCHFYPilJeO30kD/edit?usp=share_link&ouid=100361958470820548208&rtpof=true&sd=true)  [[Video]](https://www.bilibili.com/video/BV1vFfTYAEFu/)
 
-🚩**News** (2024.2) Introduction of this work [in Chinese](https://zhuanlan.zhihu.com/p/701597219) is available.
+🚩**News** (2024.2) A [blog](https://zhuanlan.zhihu.com/p/701597219) in Chinese to introduce this work is available.
 
-🚩**News** (2023.12) We add implementations to train and evaluate deep learning models within transformed domain (Frequency Domain) on three main tasks.
-
+🚩**News** (2023.12) The implementation of FreDF is released, with scripts on three tasks.
 ## Leaderboard
 
 We maintain an updated leaderboard for time series analysis models, with a **special focus on learning objectives**. As of December 2024, the top-performing models across different tasks are:
@@ -108,7 +106,7 @@ bash ./scripts/fredf_exp/imp_autoencoder/ETTh1_script/iTransformer.sh
 
 
 ## Citing FreDF
-The paper introducing PyPOTS is available in [ICLR-25](https://openreview.net/forum?id=4A9IdSa1ul). 
+The paper introducing FreDF is available in [ICLR-25](https://openreview.net/forum?id=4A9IdSa1ul). 
 If you use FreDF in your work, please consider citing it as below and 🌟staring this repository to make others notice this library. 🤗
 
 ```bibtex
