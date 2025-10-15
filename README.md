@@ -75,7 +75,7 @@ loss_feq = (torch.fft.rfft(outputs, dim=1) - torch.fft.rfft(batch_y, dim=1)).abs
 
 ```
 
-1. Install Python 3.8 and pytorch 1.8. For convenience, execute the following command.
+1. Install Python 3.8 and pytorch 1.12.1. For convenience, execute the following command.
 
 ```
 pip install -r requirements.txt

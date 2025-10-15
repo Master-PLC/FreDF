@@ -1,6 +1,16 @@
 #####################
-# pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
-# pip install -r requirements.txt
+# conda create -n fredf python=3.8
+# conda activate fredf
+# pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu113 --upgrade-strategy only-if-needed
+
+# case torch import error, try:
+## 1) Remove the offending system directories from LD_LIBRARY_PATH
+# export LD_LIBRARY_PATH=$(echo $LD_LIBRARY_PATH | \
+#     tr ':' '\n' | grep -v '/usr/local/lib/python3.10/dist-packages/torch' | \
+#     grep -v '/usr/local/lib/python3.10/dist-packages/torch_tensorrt' | tr '\n' ':' | sed 's/:$//')
+## 2) Prepend the Conda env’s own lib directories (they contain the correct .so)
+# export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib:${CONDA_PREFIX}/lib/python3.8/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+
 #####################
 
 einops
@@ -18,7 +28,7 @@ seaborn
 setproctitle
 sktime
 sympy
-tensorboard==2.12.0
+tensorboard
 torchmetrics
 tqdm
 xlrd
@@ -31,3 +41,6 @@ linear-attention-transformer
 pydantic
 docstring-parser
 local-attention
+torch==1.12.1+cu113
+torchvision==0.13.1+cu113
+torchaudio==0.12.1+cu113
