@@ -224,6 +224,9 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         if self.mask is not None:
                             loss_auxi *= self.mask
 
+                        if self.args.offload:
+                            loss_auxi = loss_auxi.cpu()
+
                         if self.args.auxi_loss == "MAE":
                             # MAE, 最小化element-wise error的模长
                             loss_auxi = loss_auxi.abs().mean() if self.args.module_first else loss_auxi.mean().abs()  # check the dim of fft
@@ -232,6 +235,9 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                             loss_auxi = (loss_auxi.abs()**2).mean() if self.args.module_first else (loss_auxi**2).mean().abs()
                         else:
                             raise NotImplementedError
+
+                        if self.args.offload:
+                            loss_auxi = loss_auxi.to(self.device)
 
                         loss += self.args.auxi_lambda * loss_auxi
                         if (i + 1) % 100 == 0:

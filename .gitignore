@@ -185,3 +185,5 @@ cython_debug/
 
 /visualize
 /func
+
+foo*

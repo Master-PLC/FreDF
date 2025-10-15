@@ -120,6 +120,8 @@ if __name__ == '__main__':
                         help='hidden layer dimensions of projector (List)')
     parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
+    parser.add_argument('--offload', type=int, default=0)
+
     args = parser.parse_args()
 
     fix_seed = args.fix_seed
@@ -140,16 +142,10 @@ if __name__ == '__main__':
 
     if args.task_name == 'long_term_forecast':
         Exp = Exp_Long_Term_Forecast
-    elif args.task_name == 'inv_long_term_forecast':
-        Exp = Exp_Inv_Long_Term_Forecast
     elif args.task_name == 'short_term_forecast':
         Exp = Exp_Short_Term_Forecast
     elif args.task_name == 'imputation':
         Exp = Exp_Imputation
-    elif args.task_name == 'anomaly_detection':
-        Exp = Exp_Anomaly_Detection
-    elif args.task_name == 'classification':
-        Exp = Exp_Classification
     else:
         Exp = Exp_Long_Term_Forecast
 
