@@ -22,7 +22,7 @@ check_jobs(){
 
 job_number=0
 
-DATA_ROOT=./dataset
+DATA_ROOT=/data/home/Licheng/workspace/TSF-CCA/dataset
 EXP_NAME=baselines
 seed=2023
 des='iTransformer'

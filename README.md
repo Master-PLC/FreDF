@@ -91,18 +91,18 @@ pip install -r requirements.txt
 
 ```
 # long-term forecast
-bash ./scripts/fredf_exp/ltf_overall/ETTh1_script/iTransformer.sh
+bash ./scripts/ltf_overall/ETTh1_script/iTransformer.sh
 # short-term forecast
-bash ./scripts/fredf_exp/stf_overall/FreTS_M4.sh
+bash ./scripts/stf_overall/FreTS_M4.sh
 # imputation
-bash ./scripts/fredf_exp/imp_autoencoder/ETTh1_script/iTransformer.sh
+bash ./scripts/imp_autoencoder/ETTh1_script/iTransformer.sh
 ```
 
 4. Apply FreDF to your own model.
 
 - Add the model file to the folder `./models`. You can follow the `./models/iTransformer.py`.
 - Include the newly added model in the `Exp_Basic.model_dict` of  `./exp/exp_basic.py`.
-- Create the corresponding scripts under the folder `./scripts`. You can follow `./scripts/fredf_exp/ltf_overall/ETTh1_script/iTransformer.sh`.
+- Create the corresponding scripts under the folder `./scripts`. You can follow `./scripts/ltf_overall/ETTh1_script/iTransformer.sh`.
 
 
 ## Citing FreDF
