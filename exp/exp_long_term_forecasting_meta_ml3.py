@@ -87,7 +87,7 @@ def update_param_dict(param_dict, grads_dict, lr):
     return updated_params
 
 
-class Exp_Long_Term_Forecast_METew_ML3(Exp_Basic):
+class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
     def __init__(self, args):
         super().__init__(args)
         self.pred_len = args.pred_len
