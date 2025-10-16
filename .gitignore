@@ -195,3 +195,5 @@ pami_scripts/
 
 analyze/
 !analyze/Example/
+!analyze/__init__.py
+!analyze/tools.py
