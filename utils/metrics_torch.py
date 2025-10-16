@@ -32,14 +32,19 @@ def MSPE(pred, true):
     return torch.mean(torch.square((pred - true) / true))
 
 
+def MRE(pred, true):
+    return torch.mean(torch.abs((pred - true) / true))
+
+
 def metric_torch(pred, true):
     mae = MAE(pred, true).item()
     mse = MSE(pred, true).item()
     rmse = RMSE(pred, true).item()
     mape = MAPE(pred, true).item()
     mspe = MSPE(pred, true).item()
+    mre = MRE(pred, true).item()
 
-    return mae, mse, rmse, mape, mspe
+    return mae, mse, rmse, mape, mspe, mre
 
 
 class MeanAE(tm.Metric):
@@ -143,13 +148,39 @@ class MSqrPE(tm.Metric):
         return value.item()
 
 
+class MeanRE(tm.Metric):
+    is_differentiable: bool = True
+    higher_is_better: bool = False
+    full_state_update: bool = False
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+
+        self.add_state("sum_rel_error", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0.0), dist_reduce_fx="sum")
+
+    def update(self, preds, target) -> None:
+        """Update state with predictions and targets."""
+        rel_error = torch.abs(preds - target) / torch.abs(target)
+        sum_rel_error = torch.sum(rel_error)
+        num_obs = target.numel()
+        self.sum_rel_error += sum_rel_error
+        self.total += num_obs
+
+    def compute(self):
+        """Compute mean relative error over state."""
+        value = self.sum_rel_error / self.total
+        return value.item()
+
+
 def create_metric_collector(device='cpu'):
     collector = tm.MetricCollection({
         "mae": MeanAE(),
         "mse": MeanSE(),
         "rmse": MeanSE(squared=False),
         "mape": MAbsPE(),
-        "mspe": MSqrPE()
+        "mspe": MSqrPE(),
+        "mre": MeanRE()
     }).to(device)
     collector.reset()
     return collector

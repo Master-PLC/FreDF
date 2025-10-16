@@ -3,6 +3,8 @@ import time
 import warnings
 
 import numpy as np
+import yaml
+from copy import deepcopy
 import torch
 import torch.nn as nn
 from torch import optim
@@ -292,7 +294,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         test_data, test_loader = self._get_data(flag='test')
         if test:
             print('loading model')
-            self.model.load_state_dict(torch.load(os.path.join(self.args.checkpoints, setting, 'checkpoint.pth')))
+            ckpt_dir = os.path.join(self.args.checkpoints, setting)
+            self.model.load_state_dict(torch.load(os.path.join(ckpt_dir, 'checkpoint.pth')))
 
         inputs, preds, trues = [], [], []
         folder_path = os.path.join(self.args.test_results, setting)
@@ -380,12 +383,13 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             self.writer = self._create_writer(res_path)
 
         m = metric_collector.compute()
-        mae, mse, rmse, mape, mspe = m["mae"], m["mse"], m["rmse"], m["mape"], m["mspe"]
+        mae, mse, rmse, mape, mspe, mre = m["mae"], m["mse"], m["rmse"], m["mape"], m["mspe"], m["mre"]
         self.writer.add_scalar(f'{self.pred_len}/test/mae', mae, self.epoch)
         self.writer.add_scalar(f'{self.pred_len}/test/mse', mse, self.epoch)
         self.writer.add_scalar(f'{self.pred_len}/test/rmse', rmse, self.epoch)
         self.writer.add_scalar(f'{self.pred_len}/test/mape', mape, self.epoch)
         self.writer.add_scalar(f'{self.pred_len}/test/mspe', mspe, self.epoch)
+        self.writer.add_scalar(f'{self.pred_len}/test/mre', mre, self.epoch)
         self.writer.close()
 
         print('{}\t| mse:{}, mae:{}'.format(self.pred_len, mse, mae))
@@ -396,11 +400,17 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         f.write('\n\n')
         f.close()
 
-        np.save(os.path.join(res_path, 'metrics.npy'), np.array([mae, mse, rmse, mape, mspe]))
+        np.save(os.path.join(res_path, 'metrics.npy'), np.array([mae, mse, rmse, mape, mspe, mre]))
 
         if self.output_pred:
             np.save(os.path.join(res_path, 'input.npy'), inputs)
             np.save(os.path.join(res_path, 'pred.npy'), preds)
             np.save(os.path.join(res_path, 'true.npy'), trues)
+
+        if not test or not os.path.exists(os.path.join(res_path, 'config.yaml')):
+            print('save configs')
+            args_dict = vars(self.args)
+            with open(os.path.join(res_path, 'config.yaml'), 'w') as yaml_file:
+                yaml.dump(args_dict, yaml_file, default_flow_style=False)
 
         return

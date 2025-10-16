@@ -31,11 +31,16 @@ def MSPE(pred, true):
     return np.mean(np.square((pred - true) / true))
 
 
+def MRE(pred, true):
+    return np.mean(np.abs((pred - true) / true))
+
+
 def metric(pred, true):
     mae = MAE(pred, true)
     mse = MSE(pred, true)
     rmse = RMSE(pred, true)
     mape = MAPE(pred, true)
     mspe = MSPE(pred, true)
+    mre = MRE(pred, true)
 
-    return mae, mse, rmse, mape, mspe
+    return mae, mse, rmse, mape, mspe, mre
