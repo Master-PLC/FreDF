@@ -187,3 +187,5 @@ cython_debug/
 /func
 
 foo*
+
+# pami_scripts/

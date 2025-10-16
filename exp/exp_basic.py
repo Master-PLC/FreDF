@@ -4,44 +4,17 @@ import shutil
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
-from models import (LSTM, MICN, TCN, Autoformer, Crossformer, DLinear,
-                    ETSformer, FEDformer, FiLM, FreTS, Informer,
-                    InviTransformer, Koopa, LightTS, Nonstationary_Transformer,
-                    PatchTST, Pyraformer, Reformer, TiDE, TimesNet,
-                    Transformer, iFETransformer, iTransformer)
-from utils.tools import ensure_path
+from models import MODEL_DICT
+from utils.tools import ensure_path, pv
 
 
 class Exp_Basic(object):
     def __init__(self, args):
         self.args = args
-        self.model_dict = {
-            'TimesNet': TimesNet,
-            'Autoformer': Autoformer,
-            'Transformer': Transformer,
-            'Nonstationary_Transformer': Nonstationary_Transformer,
-            'DLinear': DLinear,
-            'FEDformer': FEDformer,
-            'Informer': Informer,
-            'LightTS': LightTS,
-            'Reformer': Reformer,
-            'ETSformer': ETSformer,
-            'PatchTST': PatchTST,
-            'Pyraformer': Pyraformer,
-            'MICN': MICN,
-            'Crossformer': Crossformer,
-            'FiLM': FiLM,
-            'iTransformer': iTransformer,
-            'InviTransformer': InviTransformer,
-            'iFETransformer': iFETransformer,
-            'Koopa': Koopa,
-            'TiDE': TiDE,
-            'LSTM': LSTM,
-            'TCN': TCN,
-            'FreTS': FreTS
-        }
+        self.model_dict = MODEL_DICT
         self.device = self._acquire_device()
         self.model = self._build_model().to(self.device)
+        pv(self.model, args.verbose)
         self.writer = None
 
         self.epoch = 0
@@ -51,8 +24,17 @@ class Exp_Basic(object):
         self.output_vis = args.output_vis
 
     def _build_model(self):
-        raise NotImplementedError
-        return None
+        model = self.model_dict[self.args.model].Model(self.args).float()
+
+        pretrain_model_path = self.args.pretrain_model_path
+        if pretrain_model_path and os.path.exists(pretrain_model_path):
+            print(f'Loading pretrained model from {pretrain_model_path}')
+            state_dict = torch.load(pretrain_model_path)
+            model.load_state_dict(state_dict, strict=False)
+
+        if self.args.use_multi_gpu and self.args.use_gpu:
+            model = nn.DataParallel(model, device_ids=self.args.device_ids)
+        return model
 
     def _acquire_device(self):
         if self.args.use_gpu:

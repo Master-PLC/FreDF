@@ -1,17 +1,15 @@
 import argparse
+import os
 import random
+import sys
 
 import numpy as np
 import setproctitle
 import torch
-
-from exp.exp_anomaly_detection import Exp_Anomaly_Detection
-from exp.exp_classification import Exp_Classification
-from exp.exp_imputation import Exp_Imputation
-from exp.exp_inv_long_term_forecasting import Exp_Inv_Long_Term_Forecast
-from exp.exp_long_term_forecasting import Exp_Long_Term_Forecast
-from exp.exp_short_term_forecasting import Exp_Short_Term_Forecast
+import torch.profiler as profiler
+from exp import EXP_DICT
 from utils.print_args import print_args
+from utils.tools import EvalAction
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TimesNet')
@@ -24,6 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, required=True, default='Autoformer',
                         help='model name, options: [Autoformer, Transformer, TimesNet]')
     parser.add_argument('--fix_seed', type=int, default=2023, help='random seed')
+    parser.add_argument('--rerun', type=int, help='rerun', default=0)
+    parser.add_argument('--verbose', type=int, help='verbose', default=0)
 
     # save
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
@@ -34,6 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_vis', action='store_true', help='output visual figures', default=False)
 
     # data loader
+    parser.add_argument('--data_id', type=str, default='ETTm1', help='dataset name')
     parser.add_argument('--data', type=str, required=True, default='ETTm1', help='dataset type')
     parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
     parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
@@ -89,16 +90,25 @@ if __name__ == '__main__':
                         help='1: channel dependence 0: channel independence for FreTS model')
 
     # optimization
+    parser.add_argument('--optim_type', type=str, default='adam', help='optimizer type')
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
     parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
+    parser.add_argument('--warmup_steps', type=int, default=20)
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
+    parser.add_argument('--auxi_batch_size', type=int, default=1024, help='batch size of test input data')
+    parser.add_argument('--test_batch_size', type=int, default=1, help='batch size of test input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='MSE', help='loss function')
-    parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
+    parser.add_argument('--lradj', action=EvalAction, default='type1', help='adjust learning rate')
+    parser.add_argument('--step_size', type=int, default=1, help='step size for learning rate decay')
+    parser.add_argument('--lr_decay', type=float, default=0.5, help='decay rate for learning rate')
+    parser.add_argument('--min_lr', type=float, default=1e-6, help='minimum learning rate')
+    parser.add_argument('--mode', type=int, default=0, help='mode for learning rate decay')
     parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
+    parser.add_argument('--pct_start', type=float, default=0.2, help='Warmup ratio for the learning rate scheduler')
 
     # FreDF
     parser.add_argument('--rec_lambda', type=float, default=0., help='weight of reconstruction function')
@@ -108,10 +118,12 @@ if __name__ == '__main__':
     parser.add_argument('--auxi_type', type=str, default='complex', help='auxi loss type, options: [complex, mag, phase, mag-phase]')
     parser.add_argument('--module_first', type=int, default=1, help='calculate module first then mean ')
     parser.add_argument('--leg_degree', type=int, default=2, help='degree of legendre polynomial')
+    parser.add_argument('--offload', type=int, default=0)
 
     # GPU
     parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
+    parser.add_argument('--thread', type=int, default=1)
     parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
     parser.add_argument('--devices', type=str, default='0,1,2,3', help='device ids of multile gpus')
 
@@ -120,14 +132,27 @@ if __name__ == '__main__':
                         help='hidden layer dimensions of projector (List)')
     parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
-    parser.add_argument('--offload', type=int, default=0)
+    # Meta
+    parser.add_argument('--meta_lr', type=float, default=0.0005, help='meta learning rate')
+    parser.add_argument('--inner_lr', type=float, default=0.0005, help='inner learning rate')
+    parser.add_argument('--meta_inner_steps', type=int, default=1, help='meta inner steps')
+    parser.add_argument('--num_tasks', type=int, default=5, help='number of tasks')
+    parser.add_argument('--overlap_ratio', type=float, default=0.15, help='overlap ratio between tasks')
+    parser.add_argument('--meta_optim_type', type=str, default='sgd', help='optimizer type')
+    parser.add_argument('--max_norm', type=float, default=1.0, help='max norm for gradient clipping')
+    parser.add_argument('--first_order', type=int, default=1, help='first order approximation; True 1 False 0')
+    parser.add_argument('--model_per_task', type=int, default=0, help='separate model for each task; True 1 False 0')
+    parser.add_argument('--meta_type', type=str, default='all', help='meta learning type')
 
     args = parser.parse_args()
 
     fix_seed = args.fix_seed
     random.seed(fix_seed)
     torch.manual_seed(fix_seed)
+    torch.cuda.manual_seed(fix_seed)
     np.random.seed(fix_seed)
+
+    torch.set_num_threads(args.thread)
 
     args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
@@ -140,21 +165,14 @@ if __name__ == '__main__':
     print('Args in experiment:')
     print_args(args)
 
-    if args.task_name == 'long_term_forecast':
-        Exp = Exp_Long_Term_Forecast
-    elif args.task_name == 'short_term_forecast':
-        Exp = Exp_Short_Term_Forecast
-    elif args.task_name == 'imputation':
-        Exp = Exp_Imputation
-    else:
-        Exp = Exp_Long_Term_Forecast
+    if args.task_name in EXP_DICT:
+        Exp = EXP_DICT[args.task_name]
 
-    setproctitle.setproctitle(args.task_name)
+    # setproctitle.setproctitle(args.task_name)
 
     if args.is_training:
         for ii in range(args.itr):
             # setting record of experiments
-            exp = Exp(args)  # set experiments
             setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_ax{}_rl{}_axl{}_mf{}_{}_{}'.format(
                 args.task_name,
                 args.model_id,
@@ -180,6 +198,12 @@ if __name__ == '__main__':
                 ii
             )
 
+            if not args.rerun and os.path.exists(os.path.join(args.results, setting, "metrics.npy")):
+                print(f">>>>>>>setting {setting} already run, skip")
+                sys.exit(0)
+
+            exp = Exp(args)
+
             print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
             exp.train(setting)
 
@@ -188,7 +212,6 @@ if __name__ == '__main__':
             torch.cuda.empty_cache()
     else:
         ii = 0
-        exp = Exp(args)  # set experiments
         setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_ax{}_rl{}_axl{}_mf{}_{}_{}'.format(
             args.task_name,
             args.model_id,
@@ -213,6 +236,12 @@ if __name__ == '__main__':
             args.des,
             ii
         )
+
+        # if not args.rerun and os.path.exists(os.path.join(args.results, setting, "metrics.npy")):
+        #     print(f">>>>>>>setting {setting} already run, skip")
+        #     sys.exit(0)
+
+        exp = Exp(args)  # set experiments
 
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
         exp.test(setting, test=1)
