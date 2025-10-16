@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 
 from data_provider.data_loader import (Dataset_Custom, Dataset_ETT_hour, Dataset_ETT_hour_Trend,
-                                       Dataset_ETT_minute, Dataset_M4,
+                                       Dataset_ETT_minute, Dataset_M4, Dataset_PEMS,
                                        MSLSegLoader, PSMSegLoader, SMAPSegLoader, SMDSegLoader,
                                        SWATSegLoader, UEAloader)
 from data_provider.uea import collate_fn
@@ -13,6 +13,7 @@ data_dict = {
     'ETTm1': Dataset_ETT_minute,
     'ETTm2': Dataset_ETT_minute,
     'custom': Dataset_Custom,
+    'PEMS': Dataset_PEMS,
     'm4': Dataset_M4,
     'PSM': PSMSegLoader,
     'MSL': MSLSegLoader,
