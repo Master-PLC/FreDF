@@ -192,6 +192,7 @@ foo*
 pami_scripts/
 !pami_scripts/baselines/
 !pami_scripts/long_term_tune/
+!pami_scripts/meta_tune/
 
 analyze/
 !analyze/Example/
