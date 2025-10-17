@@ -12,7 +12,7 @@ from functorch import make_functional
 from torch.utils.data import DataLoader
 from utils.metrics import metric
 from utils.metrics_torch import create_metric_collector, metric_torch
-from utils.tools import EarlyStopping, Scheduler, clip_grads, disable_grad, enable_grad, log_heatmap, plot_heatmap, \
+from utils.tools import EarlyStopping, Scheduler, clip_grads, disable_grad, enable_grad, log_weight, \
     split_dataset, split_dataset_with_overlap, visual
 
 warnings.filterwarnings('ignore')
@@ -54,15 +54,31 @@ class ErrorWeighting(nn.Module):
             error = torch.fft.rfft(pred, dim=1) - torch.fft.rfft(target, dim=1)  # [B, P//2+1, D]
             weights = params['auxi_weights'] if params else self.auxi_weights
             weights = torch.softmax(weights, dim=0) * (self.pred_len // 2 + 1)
+            if self.args.offload:
+                error = error.cpu()
+                weights = weights.cpu()
+
             if self.auxi_loss == 'MSE':
                 loss_auxi = (error.abs()**2 * weights.view(1, -1, 1)).mean()
             elif self.auxi_loss == 'MAE':
                 loss_auxi = (error.abs() * weights.view(1, -1, 1)).mean()
+
+            if self.args.offload:
+                loss_auxi = loss_auxi.to(pred.device)
+                weights = weights.to(pred.device)
+
             loss += loss_auxi
         else:
             loss_auxi = 1000
 
         return loss, loss_rec, loss_auxi
+
+
+def get_weights(ew, name='rec_weights'):
+    with torch.no_grad():
+        weights = ew.state_dict()[name]
+        weights = torch.softmax(weights, dim=0)
+    return weights.detach().cpu().numpy()
 
 
 def get_param_dict(module, params=None):
@@ -133,11 +149,11 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             else:
                 outputs, attn = self.model(*model_args), None
         else:
-            model_args = tuple(model_args)
+            # model_args = tuple(model_args)
             if self.args.output_attention:
-                outputs, attn = model(params, model_args)
+                outputs, attn = model(params, *model_args)
             else:
-                outputs, attn = model(params, model_args), None
+                outputs, attn = model(params, *model_args), None
 
         f_dim = -1 if self.args.features == 'MS' else 0
         outputs = outputs[:, -self.pred_len:, f_dim:]
@@ -215,8 +231,6 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         return meta_loss, meta_rec_loss, meta_auxi_loss
 
     def initialize_meta_tasks(self, train_data):
-        self.meta_learning = False
-
         task_data_list = split_dataset_with_overlap(train_data, self.num_tasks, self.args.overlap_ratio)
         task_data_list = [split_dataset(task_data, r=0.7) for task_data in task_data_list]
 
@@ -279,6 +293,10 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_loss', avg_meta_loss_val, meta_step)
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_loss_rec', avg_meta_loss_rec, meta_step)
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_loss_auxi', avg_meta_loss_auxi, meta_step)
+            if self.args.rec_lambda:
+                log_weight(self.writer, get_weights(self.error_weighting, 'rec_weights'), f'{self.pred_len}/rec_weights', meta_step)
+            if self.args.auxi_lambda:
+                log_weight(self.writer, get_weights(self.error_weighting, 'auxi_weights'), f'{self.pred_len}/auxi_weights', meta_step)
 
             if verbose:
                 print(f"Step: {meta_step} cost time: {time.time() - epoch_time:.2f}s")

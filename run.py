@@ -133,6 +133,7 @@ if __name__ == '__main__':
     parser.add_argument('--p_hidden_layers', type=int, default=2, help='number of hidden layers in projector')
 
     # Meta
+    parser.add_argument("--pretrain_model_path", default=None, type=str)
     parser.add_argument('--meta_lr', type=float, default=0.0005, help='meta learning rate')
     parser.add_argument('--inner_lr', type=float, default=0.0005, help='inner learning rate')
     parser.add_argument('--meta_inner_steps', type=int, default=1, help='meta inner steps')
@@ -143,6 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--first_order', type=int, default=1, help='first order approximation; True 1 False 0')
     parser.add_argument('--model_per_task', type=int, default=0, help='separate model for each task; True 1 False 0')
     parser.add_argument('--meta_type', type=str, default='all', help='meta learning type')
+    parser.add_argument('--weighting_type', type=str, default='softmax', help='type of weighting for auxi loss, options: [softmax, minmax]')
 
     args = parser.parse_args()
 

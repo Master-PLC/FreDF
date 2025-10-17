@@ -200,3 +200,5 @@ analyze/
 !analyze/tools.py
 
 stats*
+
+debug*

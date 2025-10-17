@@ -261,6 +261,24 @@ def log_heatmap(writer, matrix, tag, step):
     plt.close(f)
 
 
+def plot_weight_dist(weights, save_path=None):
+    f = plt.figure(dpi=300, figsize=(8, 3))  # 如果只画一条线，就用红色，高改为3->2.5
+    f.subplots_adjust(top=0.9, left=0.1, right=0.9, bottom=0.2)
+    ax = f.add_subplot(1, 1, 1)
+    plt.bar(range(len(weights)), weights)
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight')
+        plt.close(f)
+    else:
+        return f
+
+
+def log_weight(writer, weights, tag, step):
+    f = plot_weight_dist(weights)
+    writer.add_figure(tag, f, step)
+    plt.close(f)
+
+
 def adjustment(gt, pred):
     anomaly_state = False
     for i in range(len(gt)):

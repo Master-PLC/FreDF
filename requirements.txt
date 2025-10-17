@@ -21,6 +21,7 @@ matplotlib
 numpy
 pandas
 patool
+pillow==9.5.0
 reformer_pytorch==1.4.4
 scikit_learn
 scipy
@@ -28,7 +29,7 @@ seaborn
 setproctitle
 sktime
 sympy
-tensorboard
+tensorboard==2.12.0
 torchmetrics
 tqdm
 xlrd
