@@ -431,7 +431,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
         best_model_path = os.path.join(path, 'checkpoint.pth')
         self.model.load_state_dict(torch.load(best_model_path))
-        best_ew_path = os.path.join(path, 'errow_weighting.pth')
+        best_ew_path = os.path.join(path, 'error_weighting.pth')
         self.error_weighting = torch.load(best_ew_path)
 
         return self.model
@@ -442,7 +442,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             print('loading model')
             ckpt_dir = os.path.join(self.args.checkpoints, setting)
             self.model.load_state_dict(torch.load(os.path.join(ckpt_dir, 'checkpoint.pth')))
-            self.error_weighting = torch.load(os.path.join(ckpt_dir, 'errow_weighting.pth'))
+            self.error_weighting = torch.load(os.path.join(ckpt_dir, 'error_weighting.pth'))
 
         inputs, preds, trues = [], [], []
         folder_path = os.path.join(self.args.test_results, setting)
