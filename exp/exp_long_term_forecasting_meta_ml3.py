@@ -46,7 +46,7 @@ class ErrorWeighting(nn.Module):
             weights = params['rec_weights'] if params else self.rec_weights
             weights = torch.softmax(weights, dim=0) * self.pred_len
             loss_rec = (error * weights.view(1, -1, 1)).mean()
-            loss += loss_rec
+            loss += self.rec_lambda * loss_rec
         else:
             loss_rec = 1000
 
@@ -67,7 +67,7 @@ class ErrorWeighting(nn.Module):
                 loss_auxi = loss_auxi.to(pred.device)
                 weights = weights.to(pred.device)
 
-            loss += loss_auxi
+            loss += self.auxi_lambda * loss_auxi
         else:
             loss_auxi = 1000
 
@@ -502,7 +502,11 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         mae, mse, rmse, mape, mspe, mre = metric_torch(preds, trues)
         with torch.no_grad():
             self.error_weighting.to(preds.device)
-            loss, loss_tmp, loss_feq, loss_rec, loss_auxi = self.error_weighting(preds, trues)
+            loss, loss_rec, loss_auxi = self.error_weighting(preds, trues)
+            loss_feq = torch.fft.rfft(preds, dim=1) - torch.fft.rfft(trues, dim=1)
+            if self.args.offload:
+                loss_feq = loss_feq.cpu()
+            loss_feq = (loss_feq.abs()**2).mean() if self.args.auxi_loss == 'MSE' else loss_feq.abs().mean()
         print('{}\t| mse:{}, mae:{}, loss:{}, loss feq:{}, loss rec:{}, loss auxi:{}'.format(self.pred_len, mse, mae, loss, loss_feq, loss_rec, loss_auxi))
 
         self.writer.add_scalar(f'{self.pred_len}/test/mae', mae, self.epoch)
