@@ -353,7 +353,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
                 with torch.no_grad():
                     loss_tmp = criterion(outputs, batch_y)
-                    loss_feq = torch.fft.rfft(outputs, dim=1) - torch.fft.rfft(batch_x, dim=1)
+                    loss_feq = torch.fft.rfft(outputs, dim=1) - torch.fft.rfft(batch_y, dim=1)
                     loss_feq = loss_feq.cpu()
                     loss_feq = (loss_feq.abs()**2).mean() if self.args.auxi_loss == 'MSE' else loss_feq.abs().mean()
 
