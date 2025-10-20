@@ -2,7 +2,7 @@ import argparse
 import os
 import random
 import sys
-
+#set topo
 import numpy as np
 import setproctitle
 import torch
