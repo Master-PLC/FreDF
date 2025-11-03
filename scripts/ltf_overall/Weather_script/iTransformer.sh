@@ -12,7 +12,7 @@ for process_num in $(seq ${PROC_NUM}); do
     echo "$(date +%F\ %T) Processor-${process_num} Start " >&9
 done
 
-DATA_ROOT=./dataset
+DATA_ROOT=/data/home/Licheng/workspace/TSF-CCA/dataset
 OUTPUT_DIR=./exp_results/ltf_overall
 
 model_name=iTransformer
@@ -21,10 +21,10 @@ des='LTFAll'
 
 auxi_loss="MAE"
 module_first=1
-lr=0.0001
+lr=0.0005
 auxi_mode='rfft'
 
-lbd_list=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
+lbd_list=(0.4)
 pl_list=(96 192 336 720)
 
 for lambda in ${lbd_list[@]}; do
@@ -75,7 +75,8 @@ for lambda in ${lbd_list[@]}; do
                 --results $RESULTS \
                 --test_results $TEST_RESULTS \
                 --log_path $LOG_PATH \
-                --auxi_mode ${auxi_mode}
+                --auxi_mode ${auxi_mode} \
+                --offload 1
             echo ${P} >&9
         } &
     done
