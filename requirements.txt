@@ -1,7 +1,72 @@
 #####################
 # conda create -n fredf python=3.8
 # conda activate fredf
-# pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu113 --upgrade-strategy only-if-needed
+# pip install torch==1.12.1+cu113 --index-url https://download.pytorch.org/whl/cu113
+
+#! for machines with higher computation capability, install torch with cmake (here is an example of torch-1.12.1 and cu118, little different from above):
+# git clone https://github.com/pytorch/pytorch
+# cd pytorch && git checkout v1.12.1
+# git submodule update --init --recursive
+# Add below lines to cmake/Modules_CUDA_fix/upstream/FindCUDA/select_compute_arch.cmake - Between Line 239 and 240
+#       elseif(${arch_name} STREQUAL "Hopper")
+#         set(arch_bin 9.0)
+#         set(arch_ptx 9.0)
+# Modify Dockerfile Line 48 to bewlow content
+#     TORCH_CUDA_ARCH_LIST="3.5 5.2 6.0 6.1 7.0+PTX 8.0 9.0" TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
+# pip install nvidia-pyindex
+# pip install nvidia-cudnn==8.2.0
+# conda install cmake=3.19 -y
+# apt install gcc-9 g++-9 -y
+# conda install -c nvidia/label/cuda-11.8.0 cuda
+# export CUDA_HOME=$CONDA_PREFIX
+# export CUDNN_LIBRARY_PATH=/mnt/tidalfs-bdsz01/usr/panlicheng/miniconda3/envs/fredf/lib/python3.8/site-packages/nvidia/cudnn/lib
+# export CUDNN_INCLUDE_DIR=/mnt/tidalfs-bdsz01/usr/panlicheng/miniconda3/envs/fredf/lib/python3.8/site-packages/nvidia/cudnn/include
+# unset CUDNN_LIBRARY_PATH
+# unset CUDNN_INCLUDE_DIR
+# export USE_CUDA=1
+# export TORCH_CUDA_ARCH_LIST="6.0;7.0;7.5;8.0;8.6;9.0"
+# export TORCH_CUDA_ARCH_LIST_EXPLICIT=1
+# export MAX_JOBS=$(nproc)
+# export CMAKE_PREFIX_PATH=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}
+# export PYTORCH_BUILD_VERSION=1.12.1
+# export PYTORCH_BUILD_NUMBER=1
+# export CC=gcc-9
+# export CXX=g++-9
+# export CUDAHOSTCXX=/usr/bin/g++-9
+# export CUDAHOSTCC=/usr/bin/gcc-9
+# export CMAKE_CUDA_HOST_COMPILER=/usr/bin/g++-9
+# export USE_GLOO=0
+# export BUILD_TEST=0
+# gcc -shared -fPIC -o /usr/local/cuda/lib64/libnvToolsExt.so -x c /dev/null
+# ln -sf /usr/local/cuda/lib64/libnvToolsExt.so /usr/local/cuda/lib64/libnvToolsExt.so.1
+# ln -sf $CUDA_HOME/lib $CUDA_HOME/lib64
+# export LIBRARY_PATH=$CUDA_HOME/lib64:$CUDA_HOME/lib:$LIBRARY_PATH
+# export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$CUDA_HOME/lib:$LD_LIBRARY_PATH
+# cd ${USRDIR}/miniconda3/envs/fredf/lib/python3.8/site-packages/nvidia/cudnn/lib/ && for f in libcudnn*.so.8; do ln -sf "$f" "${f%.8}"; done && cd -
+# export CUDNN_ROOT=/mnt/tidalfs-bdsz01/usr/panlicheng/miniconda3/envs/fredf/lib/python3.8/site-packages/nvidia/cudnn
+# export CUDNN_INCLUDE_DIR=$CUDNN_ROOT/include
+# export CUDNN_LIBRARY=$CUDNN_ROOT/lib/libcudnn.so      # 关键：指向具体文件
+# export CUDNN_LIB_DIR=$CUDNN_ROOT/lib
+# export LIBRARY_PATH=$CUDNN_LIB_DIR:$LIBRARY_PATH
+# export LD_LIBRARY_PATH=$CUDNN_LIB_DIR:$LD_LIBRARY_PATH
+# python setup.py clean && rm -rf build third_party/nccl/nccl/build
+# python setup.py bdist_wheel 2>&1 | tee build_pytorch.txt
+# pip install dist/torch-1.12.1-cp38-cp38-linux_x86_64.whl
+# git submodule add https://github.com/pytorch/functorch third_party/functorch
+# Or: git submodule update --init --recursive
+# cd third_party/functorch && git checkout v0.2.1 && pip install -e . && cd -
+# alias caf='conda activate fredf && \
+#     export CUDA_HOME=$CONDA_PREFIX && \
+#     export CUDNN_ROOT=$CONDA_PREFIX/lib/python3.8/site-packages/nvidia/cudnn && \
+#     export LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDNN_ROOT/lib:$LIBRARY_PATH && \
+#     export LD_LIBRARY_PATH=$CUDA_HOME/lib:$CUDA_HOME/lib64:$CUDNN_ROOT/lib:$LD_LIBRARY_PATH && \
+#     echo "[caf] fredf activated, CUDA_HOME=$CUDA_HOME"'
+# alias daf='unset CUDA_HOME CUDNN_ROOT LIBRARY_PATH LD_LIBRARY_PATH && \
+#     conda deactivate && \
+#     echo "[daf] fredf deactivated"'
+
+
+# pip install -r requirements.txt --upgrade-strategy only-if-needed
 
 # case torch import error, try:
 ## 1) Remove the offending system directories from LD_LIBRARY_PATH
@@ -21,7 +86,7 @@ matplotlib
 numpy
 pandas
 patool
-pillow==9.5.0
+Pillow==9.5.0
 reformer_pytorch==1.4.4
 scikit_learn
 scipy
@@ -42,7 +107,7 @@ linear-attention-transformer
 pydantic
 docstring-parser
 local-attention
-torch==1.12.1+cu113
-torchvision==0.13.1+cu113
-torchaudio==0.12.1+cu113
-functorch==0.2.1
+# torch==1.12.1+cu113
+# torchvision==0.13.1+cu113
+# torchaudio==0.12.1+cu113
+# functorch==0.2.1
