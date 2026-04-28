@@ -31,10 +31,10 @@ des='LTFAll'
 
 auxi_loss="MAE"
 module_first=1
-lr=0.0001
+lr=0.001
 auxi_mode='rfft'
 
-lbd_list=(0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
+lbd_list=(0.2)
 pl_list=(96 192 336 720)
 
 for lambda in ${lbd_list[@]}; do
