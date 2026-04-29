@@ -18,7 +18,7 @@ from torch.utils.tensorboard import SummaryWriter
 from data_provider.data_factory import data_provider
 from models import MODEL_DICT
 from utils.losses import mape_loss, mase_loss, smape_loss
-from utils.metrics_torch import metric_torch
+from utils.metrics_torch import metric_torch, create_metric_collector
 from utils.tools import ensure_path, pv, LocalBufferWriter, BufferSummaryWriter, FoolWriter, visual
 
 
@@ -195,6 +195,7 @@ class Exp_Basic(object):
             os.makedirs(folder_path, exist_ok=True)
 
         self.model.eval()
+        metric_collector = create_metric_collector(device=self.device)
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 outputs, batch_y, _ = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
@@ -202,6 +203,8 @@ class Exp_Basic(object):
                 batch_x = batch_x.detach()
                 outputs = outputs.detach()
                 batch_y = batch_y.detach()
+
+                metric_collector.update(outputs, batch_y)
 
                 if test_data.scale and self.args.inverse:
                     batch_x = batch_x.cpu().numpy()
@@ -241,7 +244,9 @@ class Exp_Basic(object):
         if self.writer is None:
             self.writer = self._create_writer(res_path)
 
-        mae, mse, rmse, mape, mspe, mre = metric_torch(preds, trues)
+        m = metric_collector.compute()
+        mae, mse, rmse, mape, mspe, mre = m['mae'], m['mse'], m['rmse'], m['mape'], m['mspe'], m['mre']
+        # mae, mse, rmse, mape, mspe, mre = metric_torch(preds, trues)
         metrics = OrderedDict(zip(['mae', 'mse', 'rmse', 'mape', 'mspe', 'mre'], [mae, mse, rmse, mape, mspe, mre]))
 
         extra_metrics = OrderedDict()
