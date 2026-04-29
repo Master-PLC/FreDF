@@ -20,7 +20,9 @@ warnings.filterwarnings('ignore')
 class Exp_Long_Term_Forecast(Exp_Basic):
     def __init__(self, args):
         super(Exp_Long_Term_Forecast, self).__init__(args)
+        self.seq_len = args.seq_len
         self.pred_len = args.pred_len
+        self.label_len = args.label_len
 
         if args.add_noise and args.noise_amp > 0:
             seq_len = args.pred_len
