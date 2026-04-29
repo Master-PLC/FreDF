@@ -71,6 +71,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -167,6 +173,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -265,6 +277,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -363,6 +381,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -460,6 +484,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -556,6 +586,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -653,6 +689,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -750,6 +792,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -849,6 +897,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 

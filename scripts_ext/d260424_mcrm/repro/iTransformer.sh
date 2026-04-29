@@ -24,22 +24,27 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/FreDF
-EXP_NAME=baselines
+EXP_NAME=ltf_repro
 seed=2023
 des='iTransformer'
 
 model_name=iTransformer
 datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
+datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather)
 
+auxi_mode=rfft
+auxi_type=complex
+auxi_loss=MAE
+module_first=1
 
 
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.2
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
@@ -59,7 +64,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -71,6 +76,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -119,7 +130,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -134,9 +149,9 @@ done
 dst=ETTh2
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.1
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
@@ -155,7 +170,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -167,6 +182,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -215,7 +236,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -232,7 +257,7 @@ done
 dst=ETTm1
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.2
 
 lr=0.0005
 lradj=type1
@@ -253,7 +278,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -265,6 +290,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -313,7 +344,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -330,9 +365,9 @@ done
 dst=ETTm2
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.1
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
@@ -351,7 +386,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -363,6 +398,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -411,7 +452,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -427,9 +472,9 @@ done
 dst=ECL
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.1
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
@@ -448,7 +493,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -460,6 +505,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -508,7 +559,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -523,13 +578,13 @@ done
 dst=Traffic
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.93
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
-batch_size=8
+batch_size=16
 
 rerun=0
 
@@ -544,7 +599,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -556,6 +611,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -604,7 +665,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -620,7 +685,7 @@ done
 dst=Weather
 pl_list=(96 192 336 720)
 
-lambda=1.0
+lambda=0.4
 
 lr=0.0005
 lradj=type1
@@ -641,7 +706,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -653,6 +718,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -701,7 +772,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -738,7 +813,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -750,6 +825,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -798,7 +879,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
@@ -837,7 +922,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -849,6 +934,12 @@ for pl in ${pl_list[@]}; do
     # if rerun, remove the previous stdout
     if [ $rerun -eq 1 ]; then
         rm -rf "${OUTPUT_DIR}/stdout.log"
+    else
+        subdirs=("$RESULTS"/*)
+        if [ ${#subdirs[@]} -eq 1 ] && [ -f "${subdirs[0]}/metrics.yaml" ]; then
+            echo ">>>>>>> Job: $JOB_NAME already run, skip <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            continue
+        fi
     fi
 
 
@@ -897,7 +988,11 @@ for pl in ${pl_list[@]}; do
             --results $RESULTS \
             --test_results $TEST_RESULTS \
             --log_path $LOG_PATH \
-            --rerun $rerun
+            --rerun $rerun \
+            --auxi_mode $auxi_mode \
+            --auxi_type $auxi_type \
+            --auxi_loss $auxi_loss \
+            --module_first $module_first
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
