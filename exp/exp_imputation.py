@@ -1,18 +1,18 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 import os
 import time
+import torch
 import warnings
 
 import numpy as np
-import torch
-import torch.nn as nn
-from torch import optim
 
-from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from utils.metrics import metric
-from utils.metrics_torch import create_metric_collector, metric_torch
-from utils.tools import (EarlyStopping, adjust_learning_rate, ensure_path,
-                         visual)
+from utils.metrics_torch import create_metric_collector
+from utils.tools import EarlyStopping, adjust_learning_rate, ensure_path, visual, Scheduler
 
 warnings.filterwarnings('ignore')
 
@@ -22,53 +22,35 @@ class Exp_Imputation(Exp_Basic):
         super(Exp_Imputation, self).__init__(args)
         self.mask_rate = args.mask_rate
 
-    def _build_model(self):
-        model = self.model_dict[self.args.model].Model(self.args).float()
+    def forward_step(self, batch_x, batch_y, batch_x_mark, batch_y_mark):
+        batch_x = batch_x.float().to(self.device)
+        batch_x_mark = batch_x_mark.float().to(self.device)
 
-        if self.args.use_multi_gpu and self.args.use_gpu:
-            model = nn.DataParallel(model, device_ids=self.args.device_ids)
-        return model
+        # random mask
+        B, T, N = batch_x.shape
+        mask = torch.rand((B, T, N)).to(self.device)
+        mask[mask <= self.args.mask_rate] = 0  # masked
+        mask[mask > self.args.mask_rate] = 1  # remained
+        inp = batch_x.masked_fill(mask == 0, 0)
 
-    def _get_data(self, flag):
-        data_set, data_loader = data_provider(self.args, flag)
-        return data_set, data_loader
+        outputs = self.model(inp, batch_x_mark, None, None, mask)
 
-    def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
-        return model_optim
+        f_dim = -1 if self.args.features == 'MS' else 0
+        outputs = outputs[:, :, f_dim:]
 
-    def _select_criterion(self):
-        criterion = nn.MSELoss()
-        return criterion
+        return outputs, mask
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
         self.model.eval()
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
+                outputs, mask = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
 
-                # random mask
-                B, T, N = batch_x.shape
-                """
-                B = batch size
-                T = seq len
-                N = number of features
-                """
-                mask = torch.rand((B, T, N)).to(self.device)
-                mask[mask <= self.args.mask_rate] = 0  # masked
-                mask[mask > self.args.mask_rate] = 1  # remained
-                inp = batch_x.masked_fill(mask == 0, 0)
-
-                outputs = self.model(inp, batch_x_mark, None, None, mask)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:]
                 pred = outputs.detach().cpu()
                 true = batch_x.detach().cpu()
                 mask = mask.detach().cpu()
-                
+
                 if self.args.reconstruction_type == "imputation":
                     loss = criterion(pred[mask == 0], true[mask == 0])
                 elif self.args.reconstruction_type == "autoencoder":
@@ -100,12 +82,14 @@ class Exp_Imputation(Exp_Basic):
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
+        scheduler = Scheduler(model_optim, self.args, train_steps)
         criterion = self._select_criterion()
 
         for epoch in range(self.args.train_epochs):
             self.epoch = epoch + 1
             iter_count = 0
             train_loss = []
+            rec_loss, auxi_loss = [], []
 
             self.model.train()
             epoch_time = time.time()
@@ -114,21 +98,8 @@ class Exp_Imputation(Exp_Basic):
                 iter_count += 1
                 model_optim.zero_grad()
 
-                batch_x = batch_x.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
+                outputs, mask = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
 
-                # random mask
-                B, T, N = batch_x.shape
-                mask = torch.rand((B, T, N)).to(self.device)
-                mask[mask <= self.args.mask_rate] = 0  # masked
-                mask[mask > self.args.mask_rate] = 1  # remained
-                inp = batch_x.masked_fill(mask == 0, 0)
-
-                outputs = self.model(inp, batch_x_mark, None, None, mask)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:]
-                
                 loss = 0
                 if self.args.rec_lambda:
                     if self.args.reconstruction_type == 'imputation':
@@ -140,10 +111,8 @@ class Exp_Imputation(Exp_Basic):
                     else:
                         raise NotImplementedError
                     loss += loss_rec * self.args.rec_lambda
-                    if (i + 1) % 100 == 0:
-                        print(f"\tloss_rec: {loss_rec.item()}")
-
-                    self.writer.add_scalar(f'{self.mask_rate}/train/loss_rec', loss_rec, self.step)
+                else:
+                    loss_rec = torch.tensor(1e4)
 
                 if self.args.auxi_lambda:
                     # fft shape: [B, T, N]
@@ -183,29 +152,41 @@ class Exp_Imputation(Exp_Basic):
                         raise NotImplementedError
 
                     loss += loss_auxi * self.args.auxi_lambda
-                    if (i + 1) % 100 == 0:
-                        print(f"\tloss_auxi: {loss_auxi.item()}")
-
-                    self.writer.add_scalar(f'{self.mask_rate}/train/loss_auxi', loss_auxi, self.step)
+                else:
+                    loss_auxi = torch.tensor(1e4)
 
                 train_loss.append(loss.item())
+                rec_loss.append(loss_rec.item())
+                auxi_loss.append(loss_auxi.item())
+                self.writer.add_scalar(f'{self.mask_rate}/train_iter/loss', loss.item(), self.step)
+                self.writer.add_scalar(f'{self.mask_rate}/train_iter/loss_rec', loss_rec.item(), self.step)
+                self.writer.add_scalar(f'{self.mask_rate}/train_iter/loss_auxi', loss_auxi.item(), self.step)
 
                 if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
-                    speed = (time.time() - time_now) / iter_count
+                    print("\titers: {}, epoch: {} | loss_rec: {:.7f}, loss_auxi: {:.7f}, loss: {:.7f}".format(i + 1, epoch + 1, loss_rec.item(), loss_auxi.item(), loss.item()))
+                    cost_time = time.time() - time_now
+                    speed = cost_time / iter_count
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                    print('\tspeed: {:.4f}s/iter; cost time: {:.4f}s; left time: {:.4f}s'.format(speed, cost_time, left_time))
                     iter_count = 0
                     time_now = time.time()
 
                 loss.backward()
                 model_optim.step()
 
+                if self.args.lradj in ['TST']:
+                    scheduler.step(verbose=(i + 1 == train_steps))
+
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
             train_loss = np.average(train_loss)
+            rec_loss = np.average(rec_loss)
+            auxi_loss = np.average(auxi_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
+
             self.writer.add_scalar(f'{self.mask_rate}/train/loss', train_loss, self.epoch)
+            self.writer.add_scalar(f'{self.mask_rate}/train/loss_rec', rec_loss, self.epoch)
+            self.writer.add_scalar(f'{self.mask_rate}/train/loss_auxi', auxi_loss, self.epoch)
             self.writer.add_scalar(f'{self.mask_rate}/vali/loss', vali_loss, self.epoch)
             self.writer.add_scalar(f'{self.mask_rate}/test/loss', test_loss, self.epoch)
 
@@ -215,7 +196,9 @@ class Exp_Imputation(Exp_Basic):
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
-            adjust_learning_rate(model_optim, epoch + 1, self.args)
+
+            if self.args.lradj not in ['TST']:
+                scheduler.step(vali_loss, self.epoch)
 
         best_model_path = os.path.join(path, 'checkpoint.pth')
         self.model.load_state_dict(torch.load(best_model_path))
@@ -230,29 +213,16 @@ class Exp_Imputation(Exp_Basic):
             print('loading finished')
 
         preds, trues, masks = [], [], []
-        folder_path = os.path.join(self.args.test_results, setting)
-        ensure_path(folder_path)
+        if self.output_vis:
+            folder_path = os.path.join(self.args.test_results, setting)
+            ensure_path(folder_path)
 
         self.model.eval()
         metric_collector = create_metric_collector(device=self.device)
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
+                outputs, mask = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
 
-                # random mask
-                B, T, N = batch_x.shape
-                mask = torch.rand((B, T, N)).to(self.device)
-                mask[mask <= self.args.mask_rate] = 0  # masked
-                mask[mask > self.args.mask_rate] = 1  # remained
-                inp = batch_x.masked_fill(mask == 0, 0)
-
-                # imputation
-                outputs = self.model(inp, batch_x_mark, None, None, mask)
-
-                # eval
-                f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, :, f_dim:]
                 outputs = outputs.detach().contiguous()
                 true = batch_x.detach().contiguous()
                 mask = mask.detach().contiguous()
