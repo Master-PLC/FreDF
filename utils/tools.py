@@ -1,14 +1,14 @@
 import argparse
 import math
 import os
+import torch
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Subset
+from torch.utils.tensorboard import SummaryWriter
 
 plt.switch_backend('agg')
 
@@ -78,9 +78,9 @@ def adjust_learning_rate_only(epoch, args, init_lr=None):
 
 
 class Scheduler:
-    def __init__(self, optimizer, args, train_steps, fixed_epoch=None):
+    def __init__(self, optimizer, args, train_steps, fixed_epoch=None, lradj=None):
         self.optimizer = optimizer
-        self.scheduler_type = args.lradj
+        self.scheduler_type = args.lradj if lradj is None else lradj
 
         self.step_size = args.step_size
         self.lr_decay = args.lr_decay
@@ -91,7 +91,7 @@ class Scheduler:
         self.pct_start = args.pct_start
         self.fixed_epoch = 3 if fixed_epoch is None else fixed_epoch
 
-        if self.scheduler_type is None:
+        if self.scheduler_type is None or self.scheduler_type == 'constant':
             self.scheduler = None
 
         elif self.scheduler_type == 'reduce':
@@ -147,7 +147,7 @@ class Scheduler:
         return self.last_lr
 
     def step(self, val_loss=None, epoch=None, verbose=True):
-        if self.scheduler_type is None or self.scheduler_type == 'none':
+        if self.scheduler_type is None or self.scheduler_type == 'none' or self.scheduler_type == 'constant':
             return
         elif self.scheduler_type == 'reduce':
             self.scheduler.step(val_loss, epoch)
@@ -208,6 +208,103 @@ class EarlyStopping:
         for key, value in kwargs.items():
             torch.save(value, os.path.join(path, f'{key}.pth'))
         self.val_loss_min = val_loss
+
+
+class FoolWriter:
+    def __init__(self, log_dir):
+        self.log_dir = log_dir
+
+    def add_scalar(self, tag, value, step):
+        pass
+
+    def add_figure(self, tag, figure, step):
+        pass
+
+    def close(self):
+        pass
+
+
+class BufferSummaryWriter:
+    def __init__(self, log_dir):
+        self.log_dir = log_dir
+        self.scalar_buffer = [] # list of (tag, value, step)
+        self.figure_buffer = [] # list of (tag, figure, step)
+
+    def add_scalar(self, tag, value, step):
+        # 既然最后要给 TensorBoard，这里只管存，不做转换
+        self.scalar_buffer.append((tag, value, step))
+
+    def add_figure(self, tag, figure, step):
+        # 注意：matplotlib figure 比较占内存
+        # 必须在这里转成 Tensor 或 Array 存起来，然后关闭 figure，否则内存爆炸
+        figure.canvas.draw()
+        data = np.frombuffer(figure.canvas.tostring_rgb(), dtype=np.uint8)
+        w, h = figure.canvas.get_width_height()
+        data = data.reshape((h, w, 3))
+        
+        # TensorBoard add_image 需要 (C, H, W)
+        data = data.transpose(2, 0, 1)
+        self.figure_buffer.append((tag, data, step))
+
+    def close(self):
+        # 只有在最后这一刻，才创建 SummaryWriter 并产生 I/O
+        writer = SummaryWriter(log_dir=self.log_dir)
+
+        for tag, value, step in self.scalar_buffer:
+            writer.add_scalar(tag, value, step)
+            
+        for tag, img_data, step in self.figure_buffer:
+            # 注意是 add_image 不是 add_figure，因为我们已经转成了 array
+            writer.add_image(tag, img_data, step)
+            
+        writer.close()
+
+
+class LocalBufferWriter:
+    def __init__(self, log_dir):
+        self.log_dir = log_dir
+        # 数据结构: { 'scalars': {...}, 'figures': {...} }
+        self.data = {
+            'scalars': {},
+            'figures': {}
+        }
+
+    def add_scalar(self, tag, value, step):
+        if tag not in self.data['scalars']:
+            self.data['scalars'][tag] = {'steps': [], 'values': []}
+        
+        if torch.is_tensor(value):
+            value = value.item()
+        
+        self.data['scalars'][tag]['steps'].append(step)
+        self.data['scalars'][tag]['values'].append(value)
+
+    def add_figure(self, tag, figure, step):
+        """
+        将 matplotlib figure 转为 RGB numpy 数组缓存
+        """
+        if tag not in self.data['figures']:
+            self.data['figures'][tag] = {'steps': [], 'images': []}
+
+        # === 核心黑魔法：Figure -> Numpy Array ===
+        # 1. 强制重绘，确保内容是最新的
+        figure.canvas.draw()
+        
+        # 2. 获取 RGB 数据 (H, W, 3)
+        # 注意：frombuffer 拿出来是 flat 的，需要 reshape
+        data = np.frombuffer(figure.canvas.tostring_argb(), dtype=np.uint8)
+        w, h = figure.canvas.get_width_height()
+        data = data.reshape((h, w, 4))
+        data = data[:, :, 1:4]
+        
+        # 3. 存入列表 (为了节省空间，建议在这里 copy 一份，防止引用问题)
+        self.data['figures'][tag]['steps'].append(step)
+        self.data['figures'][tag]['images'].append(data.copy())
+
+    def close(self):
+        os.makedirs(self.log_dir, exist_ok=True)
+        file_path = os.path.join(self.log_dir, 'events.pth')
+        torch.save(self.data, file_path)
 
 
 class dotdict(dict):

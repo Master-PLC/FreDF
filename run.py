@@ -1,15 +1,19 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent))
+
 import argparse
 import os
 import random
-import sys
+import torch
 
 import numpy as np
-import setproctitle
-import torch
-import torch.profiler as profiler
+
 from exp import EXP_DICT
 from utils.print_args import print_args
 from utils.tools import EvalAction
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='TimesNet')
@@ -24,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--fix_seed', type=int, default=2023, help='random seed')
     parser.add_argument('--rerun', type=int, help='rerun', default=0)
     parser.add_argument('--verbose', type=int, help='verbose', default=0)
+    parser.add_argument('--deterministic', type=int, help='use profiler', default=0)
 
     # save
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
@@ -32,6 +37,8 @@ if __name__ == '__main__':
     parser.add_argument('--log_path', type=str, default='./result_long_term_forecast.txt', help='log path')
     parser.add_argument('--output_pred', action='store_true', help='output true and pred', default=False)
     parser.add_argument('--output_vis', action='store_true', help='output visual figures', default=False)
+    parser.add_argument('--output_log', action='store_true', help='output log', default=False)
+    parser.add_argument('--report_to', type=str, default='local', help='report to tensorboard or None')
 
     # data loader
     parser.add_argument('--data_id', type=str, default='ETTm1', help='dataset name')
@@ -146,6 +153,8 @@ if __name__ == '__main__':
     parser.add_argument('--meta_type', type=str, default='all', help='meta learning type')
     parser.add_argument('--weighting_type', type=str, default='softmax', help='type of weighting for auxi loss, options: [softmax, minmax]')
 
+    parser.add_argument('--extra_metrics', action=EvalAction, default=[], help='extra_metrics')
+
     args = parser.parse_args()
 
     fix_seed = args.fix_seed
@@ -153,6 +162,14 @@ if __name__ == '__main__':
     torch.manual_seed(fix_seed)
     torch.cuda.manual_seed(fix_seed)
     np.random.seed(fix_seed)
+
+    if args.deterministic:
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     torch.set_num_threads(args.thread)
 
