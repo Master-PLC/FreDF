@@ -200,9 +200,9 @@ class Exp_Basic(object):
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 outputs, batch_y, _ = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
 
-                batch_x = batch_x.detach()
-                outputs = outputs.detach()
-                batch_y = batch_y.detach()
+                batch_x = batch_x.detach().contiguous()
+                outputs = outputs.detach().contiguous()
+                batch_y = batch_y.detach().contiguous()
 
                 metric_collector.update(outputs, batch_y)
 
