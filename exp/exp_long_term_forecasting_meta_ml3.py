@@ -1,19 +1,24 @@
+import sys
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 import os
 import time
-import warnings
-from itertools import cycle
-
-import numpy as np
 import torch
-import torch.nn as nn
+import warnings
 import yaml
+
+from collections import OrderedDict
+from itertools import cycle
+import numpy as np
+import torch.nn as nn
+
 from exp.exp_basic import Exp_Basic
 from functorch import make_functional
 from torch.utils.data import DataLoader
-from utils.metrics import metric
-from utils.metrics_torch import create_metric_collector, metric_torch
-from utils.tools import EarlyStopping, Scheduler, clip_grads, disable_grad, enable_grad, log_weight, \
-    split_dataset, split_dataset_with_overlap, visual
+from utils.metrics_torch import metric_torch
+from utils.tools import EarlyStopping, Scheduler, clip_grads, disable_grad, enable_grad, log_weight, split_dataset, split_dataset_with_overlap, visual
 
 warnings.filterwarnings('ignore')
 
@@ -29,49 +34,35 @@ class ErrorWeighting(nn.Module):
         assert args.auxi_mode == 'rfft'
         assert args.auxi_type == 'complex'
 
-        self.rec_lambda = args.rec_lambda
         self.auxi_lambda = args.auxi_lambda
+        assert self.auxi_lambda > 0, "auxi_lambda should be > 0 for ML3"
 
-        if self.rec_lambda:
-            self.rec_weights = nn.Parameter(torch.ones(args.pred_len))
-        if self.auxi_lambda:
-            self.auxi_weights = nn.Parameter(torch.ones(args.pred_len // 2 + 1))
+        self.auxi_weights = nn.Parameter(torch.ones(args.pred_len // 2 + 1))
 
     def forward(self, pred, target, params=None):
         """ML3 Learned Loss Function"""
 
-        loss = 0
-        if self.rec_lambda:
-            error = (pred - target) ** 2  # [B, P, D]
-            weights = params['rec_weights'] if params else self.rec_weights
-            weights = torch.softmax(weights, dim=0) * self.pred_len
-            loss_rec = (error * weights.view(1, -1, 1)).mean()
-            loss += self.rec_lambda * loss_rec
-        else:
-            loss_rec = 1000
+        error = torch.fft.rfft(pred, dim=1) - torch.fft.rfft(target, dim=1)  # [B, P//2+1, D]
+        weights = params['auxi_weights'] if params else self.auxi_weights
+        weights = torch.softmax(weights, dim=0) * (self.pred_len // 2 + 1)
+        if self.args.offload:
+            error = error.cpu()
+            weights = weights.cpu()
 
-        if self.auxi_lambda:
-            error = torch.fft.rfft(pred, dim=1) - torch.fft.rfft(target, dim=1)  # [B, P//2+1, D]
-            weights = params['auxi_weights'] if params else self.auxi_weights
-            weights = torch.softmax(weights, dim=0) * (self.pred_len // 2 + 1)
-            if self.args.offload:
-                error = error.cpu()
-                weights = weights.cpu()
+        if self.auxi_loss == 'MSE':
+            loss_auxi = (error.abs()**2 * weights.view(1, -1, 1)).mean()
+        elif self.auxi_loss == 'MAE':
+            loss_auxi = (error.abs() * weights.view(1, -1, 1)).mean()
 
-            if self.auxi_loss == 'MSE':
-                loss_auxi = (error.abs()**2 * weights.view(1, -1, 1)).mean()
-            elif self.auxi_loss == 'MAE':
-                loss_auxi = (error.abs() * weights.view(1, -1, 1)).mean()
-
-            if self.args.offload:
-                loss_auxi = loss_auxi.to(pred.device)
-                weights = weights.to(pred.device)
+        if self.args.offload:
+            loss_auxi = loss_auxi.to(pred.device)
+            weights = weights.to(pred.device)
 
             loss += self.auxi_lambda * loss_auxi
         else:
-            loss_auxi = 1000
+            loss_auxi = 1e4
 
-        return loss, loss_rec, loss_auxi
+        return loss_auxi
 
 
 def get_weights(ew, name='rec_weights'):
@@ -147,13 +138,15 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             if self.args.output_attention:
                 outputs, attn = self.model(*model_args)
             else:
-                outputs, attn = self.model(*model_args), None
+                outputs = self.model(*model_args)
+                attn = None
         else:
             # model_args = tuple(model_args)
             if self.args.output_attention:
                 outputs, attn = model(params, *model_args)
             else:
-                outputs, attn = model(params, *model_args), None
+                outputs = model(params, *model_args)
+                attn = None
 
         f_dim = -1 if self.args.features == 'MS' else 0
         outputs = outputs[:, -self.pred_len:, f_dim:]
@@ -162,7 +155,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
-        total_tmp_loss, total_feq_loss = [], []
+        total_feq_loss = [], []
         total_rec_loss, total_auxi_loss = [], []
 
         self.model.eval()
@@ -176,27 +169,41 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
                 pred = outputs.detach()
                 true = batch_y.detach()
 
-                loss_tmp = criterion(pred, true)  # 标准损失
                 loss_feq = torch.fft.rfft(pred, dim=1) - torch.fft.rfft(true, dim=1)
                 loss_feq = loss_feq.cpu()
                 loss_feq = (loss_feq.abs()**2).mean() if self.args.auxi_loss == 'MSE' else loss_feq.abs().mean()
 
-                loss, loss_rec, loss_auxi = self.error_weighting(pred, true)  # 学习到的损失
+                loss, loss_rec, loss_auxi = self.loss_function(pred, true)  # 学习到的损失
 
                 total_loss.append(loss)
-                total_tmp_loss.append(loss_tmp); total_feq_loss.append(loss_feq)
-                total_rec_loss.append(loss_rec); total_auxi_loss.append(loss_auxi)
+                total_feq_loss.append(loss_feq)
+                total_rec_loss.append(loss_rec)
+                total_auxi_loss.append(loss_auxi)
 
         print('Validation cost time: {}'.format(time.time() - eval_time))
         total_loss = torch.stack(total_loss).mean().item()
-        total_tmp_loss = torch.stack(total_tmp_loss).mean().item()
         total_feq_loss = torch.stack(total_feq_loss).mean().item()
         total_rec_loss = torch.stack(total_rec_loss).mean().item()
         total_auxi_loss = torch.stack(total_auxi_loss).mean().item()
 
         self.model.train()
         self.error_weighting.train()
-        return total_loss, total_tmp_loss, total_feq_loss, total_rec_loss, total_auxi_loss
+        return total_loss, total_feq_loss, total_rec_loss, total_auxi_loss
+
+    def loss_function(self, outputs, batch_y):
+        loss = 0
+        if self.args.rec_lambda:
+            loss_rec = nn.MSELoss()(outputs, batch_y)
+            loss += self.rec_lambda * loss_rec
+        else:
+            loss_rec = torch.tensor(1e4)
+
+        if self.args.auxi_lambda:
+            loss_auxi = self.error_weighting(outputs, batch_y)
+            loss += self.auxi_lambda * loss_auxi
+        else:
+            loss_auxi = torch.tensor(1e4)
+        return loss, loss_rec, loss_auxi
 
     def inner_loop(self, task_id, support_loader, query_loader):
         # 获取当前模型参数（每个meta epoch都从当前状态开始，而不是初始状态）
@@ -211,7 +218,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             outputs, batch_y, _ = self.forward_step(
                 bx, by, bx_mark, by_mark, fast_model_params.values(), model_func
             )
-            loss, loss_rec, loss_auxi = self.error_weighting(outputs, batch_y)
+            loss, _, _ = self.loss_function(outputs, batch_y)
 
             model_grads = torch.autograd.grad(
                 loss, fast_model_params.values(), 
@@ -227,7 +234,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         outputs, batch_y, _ = self.forward_step(
             bx, by, bx_mark, by_mark, fast_model_params.values(), model_func
         )
-        meta_loss, meta_rec_loss, meta_auxi_loss = self.error_weighting(outputs, batch_y)
+        meta_loss, meta_rec_loss, meta_auxi_loss = self.loss_function(outputs, batch_y)
         return meta_loss, meta_rec_loss, meta_auxi_loss
 
     def initialize_meta_tasks(self, train_data):
@@ -243,7 +250,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         query_loader_list = [cycle(query_loader) for query_loader in query_loader_list]
         return support_loader_list, query_loader_list
 
-    def meta_train(self, support_loader_list, query_loader_list, path, res_path):
+    def meta_train(self, support_loader_list, query_loader_list, path):
         # 在meta train阶段，损失函数参数可训练，模型参数也需要梯度（用于inner loop）
         enable_grad(self.error_weighting)
         enable_grad(self.model)
@@ -260,6 +267,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             task_loss_rec, task_loss_auxi = [], []
 
             meta_lr_cur = ew_scheduler.get_lr()
+            meta_lr_cur = meta_lr_cur[0] if isinstance(meta_lr_cur, list) else meta_lr_cur
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_lr', meta_lr_cur, meta_step)
 
             self.model.train()
@@ -293,8 +301,6 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_loss', avg_meta_loss_val, meta_step)
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_loss_rec', avg_meta_loss_rec, meta_step)
             self.writer.add_scalar(f'{self.pred_len}/meta_train/meta_loss_auxi', avg_meta_loss_auxi, meta_step)
-            if self.args.rec_lambda:
-                log_weight(self.writer, get_weights(self.error_weighting, 'rec_weights'), f'{self.pred_len}/rec_weights', meta_step)
             if self.args.auxi_lambda:
                 log_weight(self.writer, get_weights(self.error_weighting, 'auxi_weights'), f'{self.pred_len}/auxi_weights', meta_step)
 
@@ -321,9 +327,10 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         enable_grad(self.model)
 
         time_now = time.time()
-        train_steps = len(train_loader)
 
+        train_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+
         model_optim = self._select_optimizer(self.model, self.lr)
         scheduler = Scheduler(model_optim, self.args, train_steps)
 
@@ -331,10 +338,11 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             self.epoch = epoch + 1
             iter_count = 0
             train_loss = []
-            train_loss_tmp, train_loss_feq = [], []
+            train_loss_feq = []
             train_loss_rec, train_loss_auxi = [], []
 
             lr_cur = scheduler.get_lr()
+            lr_cur = lr_cur[0] if isinstance(lr_cur, list) else lr_cur
             self.writer.add_scalar(f'{self.pred_len}/meta_test/lr', lr_cur, self.epoch)
 
             epoch_time = time.time()
@@ -344,31 +352,30 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
                 self.step += 1
                 iter_count += 1
-
                 model_optim.zero_grad()
+
                 outputs, batch_y, _ = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
-                loss, loss_rec, loss_auxi = self.error_weighting(outputs, batch_y)
+                loss, loss_rec, loss_auxi = self.loss_function(outputs, batch_y)
                 loss.backward()
                 model_optim.step()
 
                 with torch.no_grad():
-                    loss_tmp = criterion(outputs, batch_y)
                     loss_feq = torch.fft.rfft(outputs, dim=1) - torch.fft.rfft(batch_y, dim=1)
                     loss_feq = loss_feq.cpu()
                     loss_feq = (loss_feq.abs()**2).mean() if self.args.auxi_loss == 'MSE' else loss_feq.abs().mean()
 
                 train_loss.append(loss.item())
-                train_loss_tmp.append(loss_tmp.item()); train_loss_feq.append(loss_feq.item())
-                train_loss_rec.append(loss_rec.item()); train_loss_auxi.append(loss_auxi.item())
+                train_loss_feq.append(loss_feq.item())
+                train_loss_rec.append(loss_rec.item())
+                train_loss_auxi.append(loss_auxi.item())
 
                 self.writer.add_scalar(f'{self.pred_len}/meta_test_iter/loss', loss.item(), self.step)
-                self.writer.add_scalar(f'{self.pred_len}/meta_test_iter/loss_tmp', loss_tmp.item(), self.step)
                 self.writer.add_scalar(f'{self.pred_len}/meta_test_iter/loss_feq', loss_feq.item(), self.step)
                 self.writer.add_scalar(f'{self.pred_len}/meta_test_iter/loss_rec', loss_rec.item(), self.step)
                 self.writer.add_scalar(f'{self.pred_len}/meta_test_iter/loss_auxi', loss_auxi.item(), self.step)
 
                 if (i + 1) % 100 == 0:
-                    print(f"\tMeta Test - iters: {i + 1}, epoch: {self.epoch} | loss: {loss.item():.7f}, loss tmp: {loss_tmp.item():.7f}, "
+                    print(f"\tMeta Test - iters: {i + 1}, epoch: {self.epoch} | loss: {loss.item():.7f}, "
                           f"loss rec: {loss_rec.item():.7f}, loss feq: {loss_feq.item():.7f}, loss auxi: {loss_auxi.item():.7f}")
                     cost_time = time.time() - time_now
                     speed = cost_time / iter_count
@@ -382,31 +389,30 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
             print("Epoch: {} cost time: {}".format(self.epoch, time.time() - epoch_time))
             train_loss = np.average(train_loss)
-            train_loss_tmp = np.average(train_loss_tmp); train_loss_feq = np.average(train_loss_feq)
-            train_loss_rec = np.average(train_loss_rec); train_loss_auxi = np.average(train_loss_auxi)
-            valid_loss, valid_loss_tmp, valid_loss_feq, valid_loss_rec, valid_loss_auxi = self.vali(vali_data, vali_loader, criterion)
+            train_loss_feq = np.average(train_loss_feq)
+            train_loss_rec = np.average(train_loss_rec)
+            train_loss_auxi = np.average(train_loss_auxi)
+            valid_loss, valid_loss_feq, valid_loss_rec, valid_loss_auxi = self.vali(vali_data, vali_loader, criterion)
 
             self.writer.add_scalar(f'{self.pred_len}/meta_test/loss', train_loss, self.epoch)
-            self.writer.add_scalar(f'{self.pred_len}/meta_test/loss_tmp', train_loss_tmp, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/meta_test/loss_feq', train_loss_feq, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/meta_test/loss_rec', train_loss_rec, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/meta_test/loss_auxi', train_loss_auxi, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/vali/loss', valid_loss, self.epoch)
-            self.writer.add_scalar(f'{self.pred_len}/vali/loss_tmp', valid_loss_tmp, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/vali/loss_feq', valid_loss_feq, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/vali/loss_rec', valid_loss_rec, self.epoch)
             self.writer.add_scalar(f'{self.pred_len}/vali/loss_auxi', valid_loss_auxi, self.epoch)
 
-            print(f"Epoch: {self.epoch} | Train Loss: {train_loss:.7f}, Tmp: {train_loss_tmp:.7f}, Feq: {train_loss_feq:.7f}, Rec: {train_loss_rec:.7f}, Auxi: {train_loss_auxi:.7f} | Valid Loss: {valid_loss:.7f}, Tmp: {valid_loss_tmp:.7f}, Feq: {valid_loss_feq:.7f}, Rec: {valid_loss_rec:.7f}, Auxi: {valid_loss_auxi:.7f}")
-            early_stopping(valid_loss_tmp, self.model, path)
+            print(f"Epoch: {self.epoch} | Train Loss: {train_loss:.7f}, Feq: {train_loss_feq:.7f}, Rec: {train_loss_rec:.7f}, Auxi: {train_loss_auxi:.7f} | Valid Loss: {valid_loss:.7f}, Feq: {valid_loss_feq:.7f}, Rec: {valid_loss_rec:.7f}, Auxi: {valid_loss_auxi:.7f}")
+            early_stopping(valid_loss_rec, self.model, path)
             if early_stopping.early_stop:
                 print("Meta Test Early stopping")
                 break
 
             if self.args.lradj not in ['TST']:
-                scheduler.step(valid_loss_tmp, self.epoch)
+                scheduler.step(valid_loss_rec, self.epoch)
 
-    def train(self, setting, prof=None):
+    def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
         support_loader_list, query_loader_list = self.initialize_meta_tasks(train_data)
         vali_data, vali_loader = self._get_data(flag='val')
@@ -421,7 +427,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
         # ============ Meta Train 阶段：只训练损失函数 ============
         print("\n>>>>>>>Meta Training Phase\n")
-        self.meta_train(support_loader_list, query_loader_list, path, res_path)
+        self.meta_train(support_loader_list, query_loader_list, path)
         print("\n>>>>>>>Meta Training Phase completed\n")
 
         # ============ ML3 Meta Test 阶段：重新初始化模型，使用学习到的损失函数训练 ============
@@ -436,7 +442,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
         return self.model
 
-    def test(self, setting, prof=None, test=0):
+    def test(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')
         if test:
             print('loading model')
@@ -445,12 +451,12 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             self.error_weighting = torch.load(os.path.join(ckpt_dir, 'error_weighting.pth'))
 
         inputs, preds, trues = [], [], []
-        folder_path = os.path.join(self.args.test_results, setting)
-        os.makedirs(folder_path, exist_ok=True)
+        if self.output_vis:
+            folder_path = os.path.join(self.args.test_results, setting)
+            os.makedirs(folder_path, exist_ok=True)
 
         self.model.eval()
         self.error_weighting.eval()
-        # metric_collector = create_metric_collector(device=self.device)
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 outputs, batch_y, _ = self.forward_step(batch_x, batch_y, batch_x_mark, batch_y_mark)
@@ -497,38 +503,36 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         if self.writer is None:
             self.writer = self._create_writer(res_path)
 
-        # m = metric_collector.compute()
-        # mae, mse, rmse, mape, mspe, mre = m["mae"], m["mse"], m["rmse"], m["mape"], m["mspe"], m["mre"]
         mae, mse, rmse, mape, mspe, mre = metric_torch(preds, trues)
+        metrics = OrderedDict(zip(['mae', 'mse', 'rmse', 'mape', 'mspe', 'mre'], [mae, mse, rmse, mape, mspe, mre]))
+
         with torch.no_grad():
             self.error_weighting.to(preds.device)
-            loss, loss_rec, loss_auxi = self.error_weighting(preds, trues)
+            loss, loss_rec, loss_auxi = self.loss_function(preds, trues)
             loss_feq = torch.fft.rfft(preds, dim=1) - torch.fft.rfft(trues, dim=1)
             if self.args.offload:
                 loss_feq = loss_feq.cpu()
             loss_feq = (loss_feq.abs()**2).mean() if self.args.auxi_loss == 'MSE' else loss_feq.abs().mean()
-        print('{}\t| mse:{}, mae:{}, loss:{}, loss feq:{}, loss rec:{}, loss auxi:{}'.format(self.pred_len, mse, mae, loss, loss_feq, loss_rec, loss_auxi))
+        extra_metrics = OrderedDict(zip(['loss', 'loss_feq', 'loss_rec', 'loss_auxi'], [loss.item(), loss_feq.item(), loss_rec.item(), loss_auxi.item()]))
 
-        self.writer.add_scalar(f'{self.pred_len}/test/mae', mae, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/mse', mse, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/rmse', rmse, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/mape', mape, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/mspe', mspe, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/mre', mre, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/loss', loss, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/loss_feq', loss_feq, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/loss_rec', loss_rec, self.epoch)
-        self.writer.add_scalar(f'{self.pred_len}/test/loss_auxi', loss_auxi, self.epoch)
+        full_metrics = OrderedDict(**metrics, **extra_metrics)
+        line = f'{self.args.data_id} @ {self.pred_len}\t| mse:{mse} mae:{mae}'
+        extra_line = ', '.join([f'{k}:{v}' for k, v in extra_metrics.items()])
+        line = f'{line}\t| {extra_line}'
+        print(line)
+
+        for k, v in full_metrics.items():
+            self.writer.add_scalar(f'{self.pred_len}/test/{k}', v, self.epoch)
         self.writer.close()
 
-        log_path = "result_long_term_forecast.txt" if not self.args.log_path else self.args.log_path
-        f = open(log_path, 'a')
-        f.write(setting + "\n")
-        f.write('mse:{}, mae:{}, loss:{}, loss feq:{}, loss rec:{}, loss auxi:{}'.format(mse, mae, loss, loss_feq, loss_rec, loss_auxi))
-        f.write('\n\n')
-        f.close()
+        if self.output_log:
+            log_path = "result_long_term_forecast.txt" if not self.args.log_path else self.args.log_path
+            payload = f"{setting}\n\n{line}\n\n"
+            with open(log_path, mode="a", encoding="utf-8") as f:
+                f.write(payload)
 
-        np.save(os.path.join(res_path, 'metrics.npy'), np.array([mae, mse, loss, loss_feq, loss_rec, loss_auxi, rmse, mape, mspe, mre]))
+        # np.save(os.path.join(res_path, 'metrics.npy'), np.array([mae, mse, loss, loss_feq, loss_rec, loss_auxi, rmse, mape, mspe, mre]))
+        yaml.safe_dump(dict(full_metrics), open(os.path.join(res_path, 'metrics.yaml'), 'w'), default_flow_style=False, sort_keys=False)
 
         if self.output_pred:
             np.save(os.path.join(res_path, 'input.npy'), inputs.cpu().numpy())
@@ -537,8 +541,6 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
         if not test or not os.path.exists(os.path.join(res_path, 'config.yaml')):
             print('save configs')
-            args_dict = vars(self.args)
-            with open(os.path.join(res_path, 'config.yaml'), 'w') as yaml_file:
-                yaml.dump(args_dict, yaml_file, default_flow_style=False)
+            yaml.dump(vars(self.args), open(os.path.join(res_path, 'config.yaml'), 'w'), default_flow_style=False)
 
         return
