@@ -30,7 +30,6 @@ des='iTransformer'
 
 model_name=iTransformer
 datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
-datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather)
 
 auxi_mode=rfft
 auxi_type=complex
@@ -794,7 +793,7 @@ pl_list=(12 24 36 48)
 
 lambda=1.0
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
@@ -807,6 +806,13 @@ for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
     fi
+
+    case $pl in
+        12) lambda=0.4;;
+        24) lambda=0.4;;
+        36) lambda=0.6;;
+        48) lambda=0.6;;
+    esac
 
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
@@ -916,6 +922,13 @@ for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
     fi
+
+    case $pl in
+        12) lambda=0.9;;
+        24) lambda=0.8;;
+        36) lambda=0.9;;
+        48) lambda=0.7;;
+    esac
 
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)

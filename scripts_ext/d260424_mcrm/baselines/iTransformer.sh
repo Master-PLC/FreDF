@@ -761,7 +761,7 @@ pl_list=(12 24 36 48)
 
 lambda=1.0
 
-lr=0.0005
+lr=0.001
 lradj=type1
 train_epochs=10
 patience=3
