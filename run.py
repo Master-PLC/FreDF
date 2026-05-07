@@ -150,8 +150,6 @@ if __name__ == '__main__':
     parser.add_argument('--max_norm', type=float, default=1.0, help='max norm for gradient clipping')
     parser.add_argument('--first_order', type=int, default=1, help='first order approximation; True 1 False 0')
     parser.add_argument('--model_per_task', type=int, default=0, help='separate model for each task; True 1 False 0')
-    parser.add_argument('--meta_type', type=str, default='all', help='meta learning type')
-    parser.add_argument('--weighting_type', type=str, default='softmax', help='type of weighting for auxi loss, options: [softmax, minmax]')
 
     parser.add_argument('--extra_metrics', action=EvalAction, default=[], help='extra_metrics')
 

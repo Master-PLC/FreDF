@@ -1,5 +1,5 @@
 #!/bin/bash
-MAX_JOBS=48
+MAX_JOBS=4
 GPUS=(0 1 2 3 4 5 6 7)
 TOTAL_GPUS=${#GPUS[@]}
 
@@ -24,35 +24,81 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/FreDF
-EXP_NAME=ltf_repro
+EXP_NAME=long_term
 seed=2023
 des='iTransformer'
 
 model_name=iTransformer
-datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
 
 auxi_mode=rfft
 auxi_type=complex
-auxi_loss=MAE
 module_first=1
+first_order=1
+overlap_ratio=0.0
+test_batch_size=1
+
+datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
+
 
 
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.2
-
-lr=0.001
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
-test_batch_size=1
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -63,7 +109,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -82,7 +128,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -133,11 +178,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -147,18 +213,61 @@ done
 # hyper-parameters
 dst=ETTh2
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.1
-
-lr=0.001
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -188,7 +297,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -239,11 +347,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -255,18 +384,61 @@ done
 # hyper-parameters
 dst=ETTm1
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.2
-
-lr=0.0005
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -296,7 +468,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -347,11 +518,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -363,18 +555,61 @@ done
 # hyper-parameters
 dst=ETTm2
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.1
-
-lr=0.001
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -404,7 +639,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -455,11 +689,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -470,18 +725,61 @@ done
 # hyper-parameters
 dst=ECL
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.1
-
-lr=0.001
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=16
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -511,7 +809,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -562,11 +859,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -576,18 +894,61 @@ done
 # hyper-parameters
 dst=Traffic
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.93
-
-lr=0.001
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=16
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -617,7 +978,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -668,11 +1028,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -683,18 +1064,61 @@ done
 # hyper-parameters
 dst=Weather
 pl_list=(96 192 336 720)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=0.4
-
-lr=0.0005
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -724,7 +1148,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -775,11 +1198,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -790,18 +1234,61 @@ done
 # hyper-parameters
 dst=PEMS03
 pl_list=(12 24 36 48)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=1.0
-
-lr=0.001
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -838,7 +1325,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -889,11 +1375,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
@@ -906,18 +1413,61 @@ done
 # hyper-parameters
 dst=PEMS08
 pl_list=(12 24 36 48)
+lbd_list=(0.2)
+lr_list=(0.001 0.005 0.002)
+lradj_list=(type1)
+bs_list=(32)
+meta_lr_list=(0.1 0.2 0.05)
+meta_inner_steps_list=(1 2 3 4)
+inner_lr_list=(same)
+num_tasks_list=(3)
+auxi_bs_list=(64)
+max_norm_list=(5.0)
+meta_step_list=(300)
+auxi_loss_list=(MAE MSE)
 
-lambda=1.0
-
-lr=0.0005
-lradj=type1
-train_epochs=10
-patience=3
+train_epochs=30
+patience=5
 batch_size=32
 
 rerun=0
 
+for lr in ${lr_list[@]}; do
+for inner_lr in ${inner_lr_list[@]}; do
+if [[ $inner_lr == "double" ]]; then
+    lr_inner=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $inner_lr == "half" ]]; then
+    lr_inner=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $inner_lr == "same" ]]; then
+    lr_inner=$lr
+else
+    lr_inner=$inner_lr
+fi
+[[ "$lr_inner" == .* ]] && lr_inner="0$lr_inner"
+lr_inner=$(echo "$lr_inner" | sed 's/0*$//; s/\.$//')
 
+for meta_lr in ${meta_lr_list[@]}; do
+if [[ $meta_lr == "double" ]]; then
+    lr_meta=$(echo "scale=10; $lr * 2" | bc)
+elif [[ $meta_lr == "half" ]]; then
+    lr_meta=$(echo "scale=10; $lr / 2" | bc)
+elif [[ $meta_lr == "same" ]]; then
+    lr_meta=$lr
+else
+    lr_meta=$meta_lr
+fi
+[[ "$lr_meta" == .* ]] && lr_meta="0$lr_meta"
+lr_meta=$(echo "$lr_meta" | sed 's/0*$//; s/\.$//')
+
+for meta_steps in ${meta_step_list[@]}; do
+for max_norm in ${max_norm_list[@]}; do
+for num_tasks in ${num_tasks_list[@]}; do
+for meta_inner_steps in ${meta_inner_steps_list[@]}; do
+for batch_size in ${bs_list[@]}; do
+for auxi_batch_size in ${auxi_bs_list[@]}; do
+for lradj in ${lradj_list[@]}; do
+for lambda in ${lbd_list[@]}; do
+for auxi_loss in ${auxi_loss_list[@]}; do
 for pl in ${pl_list[@]}; do
     if ! [[ " ${datasets[@]} " =~ " ${dst} " ]]; then
         continue
@@ -954,7 +1504,6 @@ for pl in ${pl_list[@]}; do
             continue
         fi
     fi
-
 
     check_jobs
     # Get GPU allocation for this job
@@ -1005,11 +1554,32 @@ for pl in ${pl_list[@]}; do
             --auxi_mode $auxi_mode \
             --auxi_type $auxi_type \
             --auxi_loss $auxi_loss \
-            --module_first $module_first
+            --module_first $module_first \
+            --inner_lr $lr_inner \
+            --meta_lr $lr_meta \
+            --meta_inner_steps $meta_inner_steps \
+            --overlap_ratio $overlap_ratio \
+            --num_tasks $num_tasks \
+            --max_norm $max_norm \
+            --first_order $first_order \
+            --warmup_steps $meta_steps \
+            --auxi_batch_size ${auxi_batch_size}
 
         sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
+done
 done
 
 
