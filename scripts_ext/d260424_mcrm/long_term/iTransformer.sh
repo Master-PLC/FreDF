@@ -1,5 +1,5 @@
 #!/bin/bash
-MAX_JOBS=4
+MAX_JOBS=48
 GPUS=(0 1 2 3 4 5 6 7)
 TOTAL_GPUS=${#GPUS[@]}
 
@@ -44,18 +44,18 @@ datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
 # hyper-parameters
 dst=ETTh1
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
+lbd_list=(0.2 0.4)
 lr_list=(0.001 0.005 0.002)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.01 0.2 0.02)
+meta_inner_steps_list=(2 3 4)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(1 3 5)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
 meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -139,7 +139,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTh1.csv \
@@ -189,7 +189,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -213,18 +213,18 @@ done
 # hyper-parameters
 dst=ETTh2
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.1 0.2)
+lr_list=(0.001 0.0005)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.01 0.2)
+meta_inner_steps_list=(1 2 4)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(1 2 4)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
 meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -308,7 +308,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTh2.csv \
@@ -358,7 +358,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -384,18 +384,18 @@ done
 # hyper-parameters
 dst=ETTm1
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.2 0.4)
+lr_list=(0.001 0.0005)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.1 0.2 0.01)
+meta_inner_steps_list=(1 3 5)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(2 4)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+meta_step_list=(500)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -479,7 +479,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTm1.csv \
@@ -529,7 +529,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -555,18 +555,18 @@ done
 # hyper-parameters
 dst=ETTm2
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.1 0.2)
+lr_list=(0.0005 0.001)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.1 0.2)
+meta_inner_steps_list=(2 4 5)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(1 3 5)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+meta_step_list=(500)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -650,7 +650,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/ETT-small/ \
             --data_path ETTm2.csv \
@@ -700,7 +700,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -725,18 +725,18 @@ done
 # hyper-parameters
 dst=ECL
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.1 0.2)
+lr_list=(0.01 0.005)
 lradj_list=(type1)
-bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+bs_list=(16)
+meta_lr_list=(0.1 0.02 0.05)
+meta_inner_steps_list=(1 2)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(1 3)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
 meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -820,7 +820,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/electricity/ \
             --data_path electricity.csv \
@@ -870,7 +870,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -894,18 +894,18 @@ done
 # hyper-parameters
 dst=Traffic
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.93 0.9)
+lr_list=(0.01 0.005)
 lradj_list=(type1)
-bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+bs_list=(16)
+meta_lr_list=(0.1 0.02 0.05)
+meta_inner_steps_list=(1 2)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(1 3)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
 meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -989,7 +989,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/traffic/ \
             --data_path traffic.csv \
@@ -1039,7 +1039,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1064,18 +1064,18 @@ done
 # hyper-parameters
 dst=Weather
 pl_list=(96 192 336 720)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.4 0.6)
+lr_list=(0.001 0.002)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.1 0.2 0.05 0.02)
+meta_inner_steps_list=(1 4 5)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(3 4 5)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+meta_step_list=(700)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -1159,7 +1159,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/weather/ \
             --data_path weather.csv \
@@ -1209,7 +1209,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1234,18 +1234,18 @@ done
 # hyper-parameters
 dst=PEMS03
 pl_list=(12 24 36 48)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.4 0.6 0.8)
+lr_list=(0.001 0.002)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.015 0.05)
+meta_inner_steps_list=(1 2)
 inner_lr_list=(same)
 num_tasks_list=(3)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+meta_step_list=(200)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -1294,13 +1294,6 @@ for pl in ${pl_list[@]}; do
         continue
     fi
 
-    case $pl in
-        12) lambda=0.4;;
-        24) lambda=0.4;;
-        36) lambda=0.6;;
-        48) lambda=0.6;;
-    esac
-
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
@@ -1336,7 +1329,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/PEMS/ \
             --data_path PEMS03.npz \
@@ -1386,7 +1379,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1413,18 +1406,18 @@ done
 # hyper-parameters
 dst=PEMS08
 pl_list=(12 24 36 48)
-lbd_list=(0.2)
-lr_list=(0.001 0.005 0.002)
+lbd_list=(0.7 0.8 0.9)
+lr_list=(0.003 0.002)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05)
-meta_inner_steps_list=(1 2 3 4)
+meta_lr_list=(0.01 0.02 0.03)
+meta_inner_steps_list=(1 2 3)
 inner_lr_list=(same)
 num_tasks_list=(3)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
-auxi_loss_list=(MAE MSE)
+meta_step_list=(300 700)
+auxi_loss_list=(MAE)
 
 train_epochs=30
 patience=5
@@ -1473,13 +1466,6 @@ for pl in ${pl_list[@]}; do
         continue
     fi
 
-    case $pl in
-        12) lambda=0.9;;
-        24) lambda=0.8;;
-        36) lambda=0.9;;
-        48) lambda=0.7;;
-    esac
-
     rl=$lambda
     ax=$(echo "1 - $lambda" | bc)
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
@@ -1515,7 +1501,7 @@ for pl in ${pl_list[@]}; do
     {
         # Set CUDA_VISIBLE_DEVICES for this script and run it in the background
         CUDA_VISIBLE_DEVICES=$gpu_allocation python -u run.py \
-            --task_name long_term_forecast \
+            --task_name long_term_forecast_meta_ml3 \
             --is_training 1 \
             --root_path $DATA_ROOT/PEMS/ \
             --data_path PEMS08.npz \
@@ -1565,7 +1551,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 5
+        sleep 100000
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done

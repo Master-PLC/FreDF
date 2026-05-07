@@ -58,10 +58,6 @@ class ErrorWeighting(nn.Module):
             loss_auxi = loss_auxi.to(pred.device)
             weights = weights.to(pred.device)
 
-            loss += self.auxi_lambda * loss_auxi
-        else:
-            loss_auxi = 1e4
-
         return loss_auxi
 
 
@@ -155,7 +151,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
-        total_feq_loss = [], []
+        total_feq_loss = []
         total_rec_loss, total_auxi_loss = [], []
 
         self.model.eval()
@@ -194,13 +190,13 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         loss = 0
         if self.args.rec_lambda:
             loss_rec = nn.MSELoss()(outputs, batch_y)
-            loss += self.rec_lambda * loss_rec
+            loss += self.args.rec_lambda * loss_rec
         else:
             loss_rec = torch.tensor(1e4)
 
         if self.args.auxi_lambda:
             loss_auxi = self.error_weighting(outputs, batch_y)
-            loss += self.auxi_lambda * loss_auxi
+            loss += self.args.auxi_lambda * loss_auxi
         else:
             loss_auxi = torch.tensor(1e4)
         return loss, loss_rec, loss_auxi
