@@ -509,7 +509,7 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             if self.args.offload:
                 loss_feq = loss_feq.cpu()
             loss_feq = (loss_feq.abs()**2).mean() if self.args.auxi_loss == 'MSE' else loss_feq.abs().mean()
-        extra_metrics = OrderedDict(zip(['loss', 'loss_feq', 'loss_rec', 'loss_auxi'], [loss.item(), loss_feq.item(), loss_rec.item(), loss_auxi.item()]))
+        extra_metrics = OrderedDict(zip(['loss_total', 'loss_feq', 'loss_rec', 'loss_auxi'], [loss.item(), loss_feq.item(), loss_rec.item(), loss_auxi.item()]))
 
         full_metrics = OrderedDict(**metrics, **extra_metrics)
         line = f'{self.args.data_id} @ {self.pred_len}\t| mse:{mse} mae:{mae}'

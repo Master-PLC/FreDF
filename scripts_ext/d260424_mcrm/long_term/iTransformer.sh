@@ -189,7 +189,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -358,7 +358,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -529,7 +529,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -700,7 +700,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -870,7 +870,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1039,7 +1039,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1209,7 +1209,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1379,7 +1379,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
@@ -1551,7 +1551,7 @@ for pl in ${pl_list[@]}; do
             --warmup_steps $meta_steps \
             --auxi_batch_size ${auxi_batch_size}
 
-        sleep 100000
+        sleep 5
     # } 2>&1 | tee -a "${OUTPUT_DIR}/stdout.log" &
     } &
 done
