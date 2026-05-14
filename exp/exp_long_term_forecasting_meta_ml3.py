@@ -214,7 +214,8 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
             outputs, batch_y, _ = self.forward_step(
                 bx, by, bx_mark, by_mark, fast_model_params.values(), model_func
             )
-            loss, _, _ = self.loss_function(outputs, batch_y)
+            # loss, _, _ = self.loss_function(outputs, batch_y)
+            loss = self.error_weighting(outputs, batch_y)
 
             model_grads = torch.autograd.grad(
                 loss, fast_model_params.values(), 
@@ -230,7 +231,9 @@ class Exp_Long_Term_Forecast_META_ML3(Exp_Basic):
         outputs, batch_y, _ = self.forward_step(
             bx, by, bx_mark, by_mark, fast_model_params.values(), model_func
         )
-        meta_loss, meta_rec_loss, meta_auxi_loss = self.loss_function(outputs, batch_y)
+        # meta_loss, meta_rec_loss, meta_auxi_loss = self.loss_function(outputs, batch_y)
+        meta_auxi_loss = meta_loss = self.error_weighting(outputs, batch_y)
+        meta_rec_loss = torch.tensor(1e4)  # 占位，保持与meta_auxi_loss的数量级差异，便于观察权重变化趋势
         return meta_loss, meta_rec_loss, meta_auxi_loss
 
     def initialize_meta_tasks(self, train_data):
