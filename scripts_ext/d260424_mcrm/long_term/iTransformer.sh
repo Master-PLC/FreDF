@@ -24,7 +24,7 @@ job_number=0
 
 DATA_ROOT=$USRDIR/dataset
 OUT_ROOT=/mnt/tidalfs-bdsz01/dataset/llm_ckpt/plc_data/FreDF
-EXP_NAME=long_term
+EXP_NAME=long_term_ext
 seed=2023
 des='iTransformer'
 
@@ -37,7 +37,8 @@ first_order=1
 overlap_ratio=0.0
 test_batch_size=1
 
-datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
+# datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
+datasets=(ETTh1 ETTh2 ETTm1 ETTm2)
 
 
 
