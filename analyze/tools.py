@@ -1,19 +1,23 @@
+import matplotlib
 import os
 import pickle
 import random
 import re
 import shutil
 import time
-from itertools import product
+import torch
+import yaml
 
-import matplotlib
+from itertools import product
+from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import torch
-import yaml
-from matplotlib.backends.backend_pdf import PdfPages
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
 
 def set_seed(seed):
@@ -47,6 +51,11 @@ def load_yaml_as_df(path):
         data = yaml.safe_load(file)
     df = pd.json_normalize(data)
     return df
+
+
+def load_yaml_fast(path):
+    with open(path, 'r') as f:
+        return yaml.load(f, Loader=Loader)
 
 
 def exist_metric(exp_dir):

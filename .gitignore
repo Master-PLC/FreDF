@@ -173,7 +173,6 @@ cython_debug/
 /result_long_term_forecast.txt
 /result_imputation.txt
 
-/stats
 /assets
 /assets_ICML2024
 /amlt_scripts
@@ -193,12 +192,6 @@ pami_scripts/
 # !pami_scripts/baselines/
 # !pami_scripts/long_term_tune/
 # !pami_scripts/meta_tune/
-
-analyze/
-!analyze/Example/
-!analyze/__init__.py
-!analyze/tools.py
-!analyze/FreDF/
 
 debug*
 

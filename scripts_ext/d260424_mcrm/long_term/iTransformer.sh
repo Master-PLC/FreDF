@@ -1,5 +1,5 @@
 #!/bin/bash
-MAX_JOBS=48
+MAX_JOBS=64
 GPUS=(0 1 2 3 4 5 6 7)
 TOTAL_GPUS=${#GPUS[@]}
 
@@ -37,25 +37,41 @@ first_order=1
 overlap_ratio=0.0
 test_batch_size=1
 
-# datasets=(ETTh1 ETTh2 ETTm1 ETTm2 ECL Traffic Weather PEMS03 PEMS08)
-datasets=(ETTh1 ETTh2 ETTm1 ETTm2)
+datasets=(ETTh2)
+# datasets=(ETTh1 ETTh2 ETTm1 ETTm2)
 
 
 
 # hyper-parameters
 dst=ETTh1
+
+# pl_list=(96 192 336 720)
+# lbd_list=(0.2 0.1 0.0)
+# lr_list=(0.001 0.003 0.002)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.01 0.05 0.02 0.1)
+# meta_inner_steps_list=(3 4 5)
+# inner_lr_list=(same)
+# num_tasks_list=(3 4 5)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(300 500)
+# auxi_loss_list=(MAE)
+
+
 pl_list=(96 192 336 720)
-lbd_list=(0.2 0.4)
-lr_list=(0.001 0.005 0.002)
-lradj_list=(type1)
+lbd_list=(0.0)
+lr_list=(0.005 0.002)
+lradj_list=(type1 type3)
 bs_list=(32)
-meta_lr_list=(0.01 0.2 0.02)
-meta_inner_steps_list=(2 3 4)
+meta_lr_list=(0.01 0.05 0.1)
+meta_inner_steps_list=(4 5)
 inner_lr_list=(same)
-num_tasks_list=(1 3 5)
+num_tasks_list=(3 5)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
+meta_step_list=(300 500)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -213,19 +229,36 @@ done
 
 # hyper-parameters
 dst=ETTh2
+
+# pl_list=(96 192 336 720)
+# lbd_list=(0.3 0.2 0.1 0.8)
+# lr_list=(0.001 0.0005 0.002)
+# lradj_list=(type1 type3)
+# bs_list=(32)
+# meta_lr_list=(0.01)
+# meta_inner_steps_list=(1 3)
+# inner_lr_list=(same)
+# num_tasks_list=(4)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(300 500)
+# auxi_loss_list=(MAE)
+
+
 pl_list=(96 192 336 720)
-lbd_list=(0.1 0.2)
-lr_list=(0.001 0.0005)
-lradj_list=(type1)
+lbd_list=(0.1 0.0)
+lr_list=(0.005 0.002)
+lradj_list=(type1 type3)
 bs_list=(32)
-meta_lr_list=(0.01 0.2)
-meta_inner_steps_list=(1 2 4)
+meta_lr_list=(0.01 0.1)
+meta_inner_steps_list=(1 3)
 inner_lr_list=(same)
-num_tasks_list=(1 2 4)
+num_tasks_list=(4 5)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
+meta_step_list=(300 500)
 auxi_loss_list=(MAE)
+
 
 train_epochs=30
 patience=5
@@ -279,7 +312,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -384,19 +417,34 @@ done
 
 # hyper-parameters
 dst=ETTm1
-pl_list=(96 192 336 720)
-lbd_list=(0.2 0.4)
-lr_list=(0.001 0.0005)
+# pl_list=(96 192 336 720)
+# lbd_list=(0.2 0.5 0.6)
+# lr_list=(0.005 0.002)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.1 0.2 0.01 0.05)
+# meta_inner_steps_list=(1 3 5)
+# inner_lr_list=(same)
+# num_tasks_list=(3 4 5)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(500)
+# auxi_loss_list=(MAE)
+
+pl_list=(192 336 720)
+lbd_list=(0.2 0.6 0.8)
+lr_list=(0.005 0.002 0.01 0.003 0.004)
 lradj_list=(type1)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.01)
-meta_inner_steps_list=(1 3 5)
+meta_lr_list=(0.1 0.01 0.05 0.005)
+meta_inner_steps_list=(1 3 4 5)
 inner_lr_list=(same)
-num_tasks_list=(2 4)
+num_tasks_list=(3 4)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(500)
+meta_step_list=(300 500)
 auxi_loss_list=(MAE)
+
 
 train_epochs=30
 patience=5
@@ -450,7 +498,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -555,18 +603,46 @@ done
 
 # hyper-parameters
 dst=ETTm2
-pl_list=(96 192 336 720)
-lbd_list=(0.1 0.2)
-lr_list=(0.0005 0.001)
-lradj_list=(type1)
+# pl_list=(96 192 336 720)
+# lbd_list=(0.1 0.2 0.3 0.4)
+# lr_list=(0.002 0.001 0.005)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.1 0.15)
+# meta_inner_steps_list=(4 5 6)
+# inner_lr_list=(same)
+# num_tasks_list=(2 3 4)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(300 500)
+# auxi_loss_list=(MAE)
+
+# pl_list=(96 336 720)
+# lbd_list=(0.1 0.2 0.3 0.4 0.6 0.8)
+# lr_list=(0.002 0.001 0.0005 0.0002)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.1 0.05 0.02 0.01)
+# meta_inner_steps_list=(3 4 5)
+# inner_lr_list=(same)
+# num_tasks_list=(3 4 5)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(700 500)
+# auxi_loss_list=(MAE)
+
+pl_list=(96 336 720)
+lbd_list=(0.1 0.2 0.3 0.05 0.15 0.25)
+lr_list=(0.002 0.001 0.0015 0.0012 0.0008)
+lradj_list=(type1 type3)
 bs_list=(32)
-meta_lr_list=(0.1 0.2)
-meta_inner_steps_list=(2 4 5)
+meta_lr_list=(0.1 0.12 0.08)
+meta_inner_steps_list=(4 5 6)
 inner_lr_list=(same)
-num_tasks_list=(1 3 5)
+num_tasks_list=(2 3 4)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(500)
+meta_step_list=(100 300 500)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -621,7 +697,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -725,18 +801,19 @@ done
 
 # hyper-parameters
 dst=ECL
+
 pl_list=(96 192 336 720)
-lbd_list=(0.1 0.2)
-lr_list=(0.01 0.005)
+lbd_list=(0.5 0.6)
+lr_list=(0.001 0.005 0.002)
 lradj_list=(type1)
-bs_list=(16)
-meta_lr_list=(0.1 0.02 0.05)
+bs_list=(16 32)
+meta_lr_list=(0.01)
 meta_inner_steps_list=(1 2)
 inner_lr_list=(same)
-num_tasks_list=(1 3)
+num_tasks_list=(1 2)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
+meta_step_list=(300 100)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -791,7 +868,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -894,18 +971,32 @@ done
 
 # hyper-parameters
 dst=Traffic
+# pl_list=(96 192 336 720)
+# lbd_list=(0.9 0.6 0.2 0.1)
+# lr_list=(0.01 0.005 0.02 0.002 0.001)
+# lradj_list=(type1)
+# bs_list=(16)
+# meta_lr_list=(0.1 0.02 0.05)
+# meta_inner_steps_list=(1 2 3)
+# inner_lr_list=(same)
+# num_tasks_list=(1 2 3)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(300 100)
+# auxi_loss_list=(MAE)
+
 pl_list=(96 192 336 720)
-lbd_list=(0.93 0.9)
-lr_list=(0.01 0.005)
-lradj_list=(type1)
+lbd_list=(0.9 0.92 0.94 0.96 0.98)
+lr_list=(0.0005 0.0008 0.001 0.0002)
+lradj_list=(type1 type3)
 bs_list=(16)
-meta_lr_list=(0.1 0.02 0.05)
-meta_inner_steps_list=(1 2)
+meta_lr_list=(0.01 0.02 0.05)
+meta_inner_steps_list=(1)
 inner_lr_list=(same)
-num_tasks_list=(1 3)
+num_tasks_list=(1)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300)
+meta_step_list=(200 100 50)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -960,7 +1051,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1064,18 +1155,32 @@ done
 
 # hyper-parameters
 dst=Weather
+# pl_list=(96 192 336 720)
+# lbd_list=(0.4 0.6)
+# lr_list=(0.001 0.002)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.1 0.2 0.05 0.02)
+# meta_inner_steps_list=(1 4 5)
+# inner_lr_list=(same)
+# num_tasks_list=(3 4 5)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(700)
+# auxi_loss_list=(MAE)
+
 pl_list=(96 192 336 720)
-lbd_list=(0.4 0.6)
-lr_list=(0.001 0.002)
-lradj_list=(type1)
+lbd_list=(0.4 0.2 0.1 0.8 0.05 0.6)
+lr_list=(0.001 0.0005 0.0002 0.0001)
+lradj_list=(type1 type3)
 bs_list=(32)
-meta_lr_list=(0.1 0.2 0.05 0.02)
-meta_inner_steps_list=(1 4 5)
+meta_lr_list=(0.1 0.05 0.02)
+meta_inner_steps_list=(1 3 5 7)
 inner_lr_list=(same)
-num_tasks_list=(3 4 5)
+num_tasks_list=(3 5 7)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(700)
+meta_step_list=(500 300 100)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -1130,7 +1235,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1234,18 +1339,46 @@ done
 
 # hyper-parameters
 dst=PEMS03
+# pl_list=(12 24 36 48)
+# lbd_list=(0.4 0.6 0.8)
+# lr_list=(0.001 0.002)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.015 0.05)
+# meta_inner_steps_list=(1 2)
+# inner_lr_list=(same)
+# num_tasks_list=(3)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(200)
+# auxi_loss_list=(MAE)
+
+# pl_list=(12 24 36 48)
+# lbd_list=(0.1 0.6 0.8 0.9)
+# lr_list=(0.001 0.0005 0.0002)
+# lradj_list=(type1)
+# bs_list=(32)
+# meta_lr_list=(0.1 0.05 0.2)
+# meta_inner_steps_list=(1 2 3)
+# inner_lr_list=(same)
+# num_tasks_list=(1 3 5)
+# auxi_bs_list=(64)
+# max_norm_list=(5.0)
+# meta_step_list=(200 300)
+# auxi_loss_list=(MAE)
+
 pl_list=(12 24 36 48)
-lbd_list=(0.4 0.6 0.8)
-lr_list=(0.001 0.002)
-lradj_list=(type1)
+lbd_list=(0.7 0.75 0.85 0.95 0.8 0.9)
+lr_list=(0.001 0.0015 0.0008 0.002)
+lradj_list=(type1 type3)
 bs_list=(32)
-meta_lr_list=(0.015 0.05)
+meta_lr_list=(0.1 0.05 0.02)
 meta_inner_steps_list=(1 2)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(2 3)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(200)
+meta_step_list=(200 100 50)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -1300,7 +1433,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
@@ -1406,18 +1539,19 @@ done
 
 # hyper-parameters
 dst=PEMS08
+
 pl_list=(12 24 36 48)
-lbd_list=(0.7 0.8 0.9)
-lr_list=(0.003 0.002)
-lradj_list=(type1)
+lbd_list=(0.7 0.8 0.6)
+lr_list=(0.001 0.002 0.0005)
+lradj_list=(type1 type3)
 bs_list=(32)
-meta_lr_list=(0.01 0.02 0.03)
-meta_inner_steps_list=(1 2 3)
+meta_lr_list=(0.01 0.05)
+meta_inner_steps_list=(2 3)
 inner_lr_list=(same)
-num_tasks_list=(3)
+num_tasks_list=(3 4)
 auxi_bs_list=(64)
 max_norm_list=(5.0)
-meta_step_list=(300 700)
+meta_step_list=(300 100)
 auxi_loss_list=(MAE)
 
 train_epochs=30
@@ -1472,7 +1606,7 @@ for pl in ${pl_list[@]}; do
     decimal_places=$(echo "$lambda" | awk -F. '{print length($2)}')
     ax=$(printf "%.${decimal_places}f" $ax)
 
-    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}
+    JOB_NAME=${model_name}_${dst}_${pl}_${rl}_${ax}_${lr}_${lradj}_${train_epochs}_${patience}_${batch_size}_${auxi_mode}_${auxi_type}_${auxi_loss}_${module_first}_${first_order}_${overlap_ratio}_${auxi_batch_size}_${max_norm}_${num_tasks}_${meta_inner_steps}_${meta_steps}_${lr_inner}_${lr_meta}
     OUTPUT_DIR="${OUT_ROOT}/results/${EXP_NAME}/${JOB_NAME}"
 
     CHECKPOINTS=$OUTPUT_DIR/checkpoints/
